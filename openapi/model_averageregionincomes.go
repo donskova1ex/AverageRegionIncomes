@@ -13,7 +13,7 @@ package openapi
 type Averageregionincomes struct {
 	RegionId int32 `json:"RegionId,omitempty"`
 
-	RegionName int32 `json:"RegionName,omitempty"`
+	RegionName string `json:"RegionName,omitempty"`
 
 	Year int32 `json:"Year,omitempty"`
 

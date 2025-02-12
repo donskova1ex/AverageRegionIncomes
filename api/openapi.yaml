@@ -57,7 +57,7 @@ components:
       example:
         Quarter: 1
         Year: 2025
-        RegionName: 0
+        RegionName: Республика Башкортостан
         AverageRegionIncomes: 36587.16
         RegionId: 2
       properties:
@@ -65,7 +65,8 @@ components:
           example: 2
           type: integer
         RegionName:
-          type: integer
+          type: string
+          example: Республика Башкортостан
         Year:
           example: 2025
           type: integer
