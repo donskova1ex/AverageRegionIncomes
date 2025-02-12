@@ -1,0 +1,78 @@
+openapi: 3.0.0
+info:
+  description: 'This is a sample some AverageRegionIncomes '
+  title: Swagger user management service - OpenAPI 3.0
+  version: 1.0.0
+servers:
+- url: https://localhost:8080/api/v1
+tags:
+- description: "get region incomes by regionid, year, quarter"
+  name: GetRegionIncomes
+paths:
+  /regionincomes:
+    get:
+      description: returns average region incomes
+      operationId: GetRegionIncomes
+      parameters:
+      - explode: true
+        in: query
+        name: regionid
+        required: true
+        schema:
+          type: integer
+        style: form
+      - explode: true
+        in: query
+        name: year
+        required: false
+        schema:
+          type: integer
+        style: form
+      - explode: true
+        in: query
+        name: quarter
+        required: false
+        schema:
+          type: integer
+        style: form
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/averageregionincomes'
+                type: array
+          description: successful operation
+        "400":
+          description: Invalid dates
+        "404":
+          description: parameters not found
+      summary: Get average region incomes
+      tags:
+      - GetRegionIncomes
+components:
+  schemas:
+    averageregionincomes:
+      example:
+        Quarter: 1
+        Year: 2025
+        RegionName: 0
+        AverageRegionIncomes: 36587.16
+        RegionId: 2
+      properties:
+        RegionId:
+          example: 2
+          type: integer
+        RegionName:
+          type: integer
+        Year:
+          example: 2025
+          type: integer
+        Quarter:
+          example: 1
+          type: integer
+        AverageRegionIncomes:
+          example: 36587.16
+          type: number
+      type: object
