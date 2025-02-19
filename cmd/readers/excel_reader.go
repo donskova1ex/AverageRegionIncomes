@@ -2,12 +2,13 @@ package main
 
 import (
 	"fmt"
-	"github.com/xuri/excelize/v2"
 	"log"
 	"log/slog"
 	"os"
 	"strconv"
 	"strings"
+
+	"github.com/xuri/excelize/v2"
 )
 
 type RegionIncomes struct {
@@ -45,6 +46,7 @@ func main() {
 
 	if err != nil {
 		logger.Error("failed to get table rows", err.Error())
+		//TODO:Retry reading rows
 	}
 
 	for i, row := range rows[1:] {
