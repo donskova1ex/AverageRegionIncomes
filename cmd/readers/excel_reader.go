@@ -7,6 +7,8 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/xuri/excelize/v2"
 )
@@ -19,15 +21,28 @@ type RegionIncomes struct {
 }
 
 func main() {
+	const maxRetries = 3
 	log.Printf("Server started")
 
 	logJSONHandler := slog.NewJSONHandler(os.Stdout, nil)
 	logger := slog.New(logJSONHandler)
-
 	slog.SetDefault(logger)
 
-	filepath := "C:/Users/Admin/Desktop/testingAverageIncome.xlsx"
-	file, err := excelize.OpenFile(filepath)
+	filepath := "C:/Users/Admin/Desktop/AverageIncomes.xlsx"
+
+	var file *excelize.File
+	var err error
+	for attempt := 1; attempt <= maxRetries; attempt++ {
+		if file, err = excelize.OpenFile(filepath); err == nil {
+			break
+		}
+		logger.Error(
+			"err",
+			"failed to get file, retrying...",
+			fmt.Sprintf("attempt #%d of #%d", attempt, maxRetries),
+			err.Error(),
+		)
+	}
 
 	if err != nil {
 		logger.Error(
@@ -49,8 +64,20 @@ func main() {
 		}
 	}(file)
 
+	var rows [][]string
 	sheets := file.GetSheetList()
-	rows, err := file.GetRows(sheets[0])
+	for attempt := 1; attempt <= maxRetries; attempt++ {
+		if rows, err = file.GetRows(sheets[0]); err == nil {
+			break
+		}
+		logger.Error(
+			"err",
+			"failed to get rows, retrying...",
+			fmt.Sprintf("attempt #%d of #%d", attempt, maxRetries),
+			err.Error(),
+		)
+		time.Sleep(time.Second)
+	}
 
 	if err != nil {
 		logger.Error(
@@ -58,23 +85,35 @@ func main() {
 			"failed to get table rows",
 			err.Error(),
 		)
-		//TODO:Retry reading rows
 	}
 
-	for i, row := range rows[1:] {
-		region := row[0]
-		regionIncomes, err := convertingStringsToStruct(rows[0][1:], rows[i+1][1:], region)
-		if err != nil {
-			logger.Error(
-				"err",
-				"failed to converting strings to domain struct",
-				err.Error(),
-			)
-		}
+	var allRegionIncomes []*RegionIncomes
+	var mu = &sync.Mutex{}
+	var wg = &sync.WaitGroup{}
+	wg.Add(len(rows[1:]))
 
-		for _, regionIncome := range regionIncomes {
-			fmt.Println(regionIncome.Region, regionIncome.Year, regionIncome.Quarter, regionIncome.AverageRegionIncomes)
-		}
+	for i, row := range rows[1:] {
+		go func(i int, row []string) {
+			defer wg.Done()
+			region := row[0]
+			regionIncomes, err := convertingStringsToStruct(rows[0][1:], rows[i+1][1:], region)
+			if err != nil {
+				logger.Error(
+					"err",
+					"failed to convert strings to domain struct",
+					err.Error(),
+				)
+				return
+			}
+			mu.Lock()
+			allRegionIncomes = append(allRegionIncomes, regionIncomes...)
+			mu.Unlock()
+		}(i, row)
+	}
+	wg.Wait()
+
+	for _, regionIncome := range allRegionIncomes {
+		fmt.Println(regionIncome.Region, regionIncome.Year, regionIncome.Quarter, regionIncome.AverageRegionIncomes)
 	}
 
 }
