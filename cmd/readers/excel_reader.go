@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"github.com/xuri/excelize/v2"
 	"log"
 	"log/slog"
 	"os"
@@ -10,8 +11,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-
-	"github.com/xuri/excelize/v2"
 )
 
 type RegionIncomes struct {
@@ -22,15 +21,29 @@ type RegionIncomes struct {
 }
 
 func main() {
-	const maxRetries = 3
-	log.Printf("Server started")
 
+	log.Printf("Server started")
 	logJSONHandler := slog.NewJSONHandler(os.Stdout, nil)
 	logger := slog.New(logJSONHandler)
 	slog.SetDefault(logger)
 
-	filepath := "C:/Users/Admin/Desktop/AverageIncomes.xlsx"
+	timoutInterval := time.Second * 5
+	ticker := time.NewTicker(timoutInterval)
+	defer ticker.Stop()
 
+	for range ticker.C {
+		readingDbFile(logger)
+		logger.Info(
+			"file is reading from Excel",
+		)
+	}
+
+}
+
+func readingDbFile(logger *slog.Logger) {
+	const maxRetries = 3
+
+	filepath := "C:/Users/Admin/Desktop/AverageIncomes.xlsx"
 	file, err := excelize.OpenFile(filepath)
 	if err != nil {
 		logger.Error(
@@ -54,7 +67,6 @@ func main() {
 		}
 	}(file)
 
-	var rows [][]string
 	sheets := file.GetSheetList()
 	if len(sheets) == 0 {
 		logger.Error(
@@ -64,6 +76,8 @@ func main() {
 		)
 		os.Exit(1)
 	}
+
+	var rows [][]string
 	for attempt := 1; attempt <= maxRetries; attempt++ {
 		if rows, err = file.GetRows(sheets[0]); err == nil {
 			break
@@ -75,9 +89,7 @@ func main() {
 			err.Error(),
 		)
 		time.Sleep(time.Second)
-
 	}
-
 	if err != nil {
 		logger.Error(
 			"err",
@@ -88,10 +100,10 @@ func main() {
 	}
 
 	var allRegionIncomes []*RegionIncomes
+
 	var mu = &sync.Mutex{}
 	var wg = &sync.WaitGroup{}
 	wg.Add(len(rows[1:]))
-
 	for i, row := range rows[1:] {
 		go func(i int, row []string) {
 			defer wg.Done()
@@ -115,7 +127,6 @@ func main() {
 	for _, regionIncome := range allRegionIncomes {
 		fmt.Println(regionIncome.Region, regionIncome.Year, regionIncome.Quarter, regionIncome.AverageRegionIncomes)
 	}
-
 }
 
 func convertingStringsToStruct(dataParts []string, valueParts []string, region string) ([]*RegionIncomes, error) {
