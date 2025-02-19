@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"log/slog"
@@ -30,20 +31,7 @@ func main() {
 
 	filepath := "C:/Users/Admin/Desktop/AverageIncomes.xlsx"
 
-	var file *excelize.File
-	var err error
-	for attempt := 1; attempt <= maxRetries; attempt++ {
-		if file, err = excelize.OpenFile(filepath); err == nil {
-			break
-		}
-		logger.Error(
-			"err",
-			"failed to get file, retrying...",
-			fmt.Sprintf("attempt #%d of #%d", attempt, maxRetries),
-			err.Error(),
-		)
-	}
-
+	file, err := excelize.OpenFile(filepath)
 	if err != nil {
 		logger.Error(
 			"err",
@@ -54,18 +42,28 @@ func main() {
 	}
 
 	defer func(file *excelize.File) {
-		err := file.Close()
-		if err != nil {
-			logger.Error(
-				"err",
-				"failed to close file",
-				err.Error(),
-			)
+		if file != nil {
+			err := file.Close()
+			if err != nil {
+				logger.Error(
+					"err",
+					"failed to close file",
+					err.Error(),
+				)
+			}
 		}
 	}(file)
 
 	var rows [][]string
 	sheets := file.GetSheetList()
+	if len(sheets) == 0 {
+		logger.Error(
+			"err",
+			"failed to get file sheets",
+			errors.New("no file sheets found"),
+		)
+		os.Exit(1)
+	}
 	for attempt := 1; attempt <= maxRetries; attempt++ {
 		if rows, err = file.GetRows(sheets[0]); err == nil {
 			break
@@ -77,6 +75,7 @@ func main() {
 			err.Error(),
 		)
 		time.Sleep(time.Second)
+
 	}
 
 	if err != nil {
@@ -85,6 +84,7 @@ func main() {
 			"failed to get table rows",
 			err.Error(),
 		)
+		os.Exit(1)
 	}
 
 	var allRegionIncomes []*RegionIncomes
