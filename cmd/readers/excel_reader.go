@@ -63,7 +63,7 @@ func main() {
 
 	for i, row := range rows[1:] {
 		region := row[0]
-		regionIncomes, err := convertingStringsToStruct(rows[0][1:], rows[i+1][1:], region, logger)
+		regionIncomes, err := convertingStringsToStruct(rows[0][1:], rows[i+1][1:], region)
 		if err != nil {
 			logger.Error(
 				"err",
@@ -79,7 +79,7 @@ func main() {
 
 }
 
-func convertingStringsToStruct(dataParts []string, valueParts []string, region string, log *slog.Logger) ([]*RegionIncomes, error) {
+func convertingStringsToStruct(dataParts []string, valueParts []string, region string) ([]*RegionIncomes, error) {
 	var regionIncomes []*RegionIncomes
 
 	for index, value := range dataParts {
