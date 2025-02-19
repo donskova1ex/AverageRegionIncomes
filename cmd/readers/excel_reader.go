@@ -30,14 +30,22 @@ func main() {
 	file, err := excelize.OpenFile(filepath)
 
 	if err != nil {
-		logger.Error("failed to open file", err.Error())
+		logger.Error(
+			"err",
+			"failed to open file",
+			err.Error(),
+		)
 		os.Exit(1)
 	}
 
 	defer func(file *excelize.File) {
 		err := file.Close()
 		if err != nil {
-			logger.Error("failed to close file", err.Error())
+			logger.Error(
+				"err",
+				"failed to close file",
+				err.Error(),
+			)
 		}
 	}(file)
 
@@ -45,7 +53,11 @@ func main() {
 	rows, err := file.GetRows(sheets[0])
 
 	if err != nil {
-		logger.Error("failed to get table rows", err.Error())
+		logger.Error(
+			"err",
+			"failed to get table rows",
+			err.Error(),
+		)
 		//TODO:Retry reading rows
 	}
 
@@ -53,7 +65,11 @@ func main() {
 		region := row[0]
 		regionIncomes, err := convertingStringsToStruct(rows[0][1:], rows[i+1][1:], region, logger)
 		if err != nil {
-			logger.Error("failed to converting strings to domain struct", err.Error())
+			logger.Error(
+				"err",
+				"failed to converting strings to domain struct",
+				err.Error(),
+			)
 		}
 
 		for _, regionIncome := range regionIncomes {
