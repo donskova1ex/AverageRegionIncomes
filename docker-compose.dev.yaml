@@ -46,3 +46,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+  reader-up:
+    container_name: reader.reader
+    build:
+      context: .
+      dockerfile: Dockerfile.reader

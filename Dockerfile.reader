@@ -1,0 +1,14 @@
+# Stage 1: Builder
+FROM golang:alpine3.19 AS builder
+RUN apk update && apk add --no-cache git make bash
+WORKDIR /app
+COPY go.mod go.sum ./
+RUN go mod download
+COPY . .
+ENV CGO_ENABLED=0
+RUN go build -o excel_reader ./cmd/readers/excel_reader.go
+FROM alpine:latest
+RUN apk update && apk add --no-cache bash
+WORKDIR /app
+COPY --from=builder /app/excel_reader /app/excel_reader
+CMD ["./excel_reader"]

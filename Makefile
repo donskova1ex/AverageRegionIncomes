@@ -1,3 +1,4 @@
+include scripts/*.mk
 
 DEV_COMPOSE_ARGS=--env-file .env.dev -f docker-compose.dev.yaml
 DEV_COMPOSE_ENV=docker compose $(DEV_COMPOSE_ARGS)
@@ -14,3 +15,8 @@ dev-migrate-up:
 
 dev-migrate-down:
 	docker compose --profile migrations-down -f docker-compose.dev.yaml up -d migrations-down
+
+dev-reader-build: reader_docker_build
+
+dev-reader-up: 
+	$(DEV_COMPOSE) -f docker-compose.dev.yaml up -d reader-up
