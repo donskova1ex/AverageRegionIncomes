@@ -8,9 +8,10 @@ COPY *.mod *.sum ./
 RUN go mod download
 
 COPY . .
+RUN rm -f excel_reader
 
 ENV CGO_ENABLED=0
-RUN go build -o excel_reader ./cmd/readers/excel_reader.go
+RUN go build -a -o excel_reader ./cmd/readers/excel_reader.go
 
 FROM alpine:latest
 
