@@ -28,7 +28,7 @@ func main() {
 	logger := slog.New(logJSONHandler)
 	slog.SetDefault(logger)
 
-	//TODO: все сильно под вопросом//
+	//TODO: все сильно под вопросом/volumes/
 	filepath := `/mnt/network_share/AverageIncomes.xlsx`
 
 	timoutInterval := time.Second * 5
