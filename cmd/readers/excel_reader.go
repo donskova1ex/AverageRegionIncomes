@@ -3,7 +3,6 @@ package main
 import (
 	"errors"
 	"fmt"
-	"github.com/xuri/excelize/v2"
 	"log"
 	"log/slog"
 	"os"
@@ -11,6 +10,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/xuri/excelize/v2"
 )
 
 type RegionIncomes struct {
