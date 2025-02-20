@@ -27,7 +27,8 @@ func main() {
 	logJSONHandler := slog.NewJSONHandler(os.Stdout, nil)
 	logger := slog.New(logJSONHandler)
 	slog.SetDefault(logger)
-	filepath := `\\192.168.3.11\db\AverageIncomes.xlsx`
+	filepath := `/mnt/network_share/AverageIncomes.xlsx`
+
 	timoutInterval := time.Second * 5
 	ticker := time.NewTicker(timoutInterval)
 	defer ticker.Stop()
@@ -45,13 +46,11 @@ func main() {
 func readingDbFile(logger *slog.Logger, filepath string) {
 	const maxRetries = 3
 
-	//filepath := `\\192.168.3.11\db\AverageIncomes.xlsx`
 	file, err := excelize.OpenFile(filepath)
 	if err != nil {
 		logger.Error(
 			"err",
 			"failed to open file",
-			slog.String("file", filepath),
 			err.Error(),
 		)
 		os.Exit(1)
@@ -88,7 +87,7 @@ func readingDbFile(logger *slog.Logger, filepath string) {
 		logger.Error(
 			"err",
 			"failed to get rows, retrying...",
-			fmt.Sprintf("attempt #%d of #%d", attempt, maxRetries),
+			"attemp", fmt.Sprintf(": #%d of #%d", attempt, maxRetries),
 			err.Error(),
 		)
 		time.Sleep(time.Second)

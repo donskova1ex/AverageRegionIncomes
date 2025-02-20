@@ -48,6 +48,9 @@ services:
         condition: service_healthy
   reader-up:
     container_name: reader.reader
+    cap_add:
+      - SYS_ADMIN
+      - NET_ADMIN
     build:
       context: .
       dockerfile: Dockerfile.reader

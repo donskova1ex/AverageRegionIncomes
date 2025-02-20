@@ -2,20 +2,27 @@ FROM golang:alpine3.19 AS builder
 
 RUN apk update && apk add --no-cache git
 
+RUN apk update && apk add --no-cache cifs-utils
+
 WORKDIR /app
 
-COPY *.mod *.sum ./
+COPY go.mod go.sum ./
 RUN go mod download
 
 COPY . .
-RUN rm -f excel_reader
 
 ENV CGO_ENABLED=0
 RUN go build -a -o excel_reader ./cmd/readers/excel_reader.go
 
 FROM alpine:latest
 
-RUN apk update && apk add --no-cache bash
+RUN apk update && apk add --no-cache bash cifs-utils
+
 WORKDIR /app
+
 COPY --from=builder /app/excel_reader /app/excel_reader
-CMD ["./excel_reader"]
+
+RUN mkdir -p /mnt/network_share
+
+# Пытаюсь монтировать сетевую папку 
+CMD ["sh", "-c", "mount -t cifs //192.168.3.11/db/ /mnt/network_share -o credentials=/credentials.txt,vers=2.1,debug && ./excel_reader"]

@@ -7,8 +7,5 @@ READER_CONTAINER_NAME?=docker.io/donskova1ex/${READER_NAME}
 clean:
 	rm -rf bin/excel_reader
 
-reader_local_build: clean
-	go build -a -o bin/${READER_NAME} cmd/readers/${READER_NAME}.go
-
 reader_docker_build:
 	docker build --no-cache -t ${READER_CONTAINER_NAME}:${READER_VERSION} -t ${READER_CONTAINER_NAME}:latest -f Dockerfile.reader .
