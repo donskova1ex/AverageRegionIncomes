@@ -6,6 +6,7 @@ import (
 	"log"
 	"log/slog"
 	"os"
+	"os/exec"
 	"strconv"
 	"strings"
 	"sync"
@@ -28,6 +29,18 @@ func main() {
 	logJSONHandler := slog.NewJSONHandler(os.Stdout, nil)
 	logger := slog.New(logJSONHandler)
 	slog.SetDefault(logger)
+
+	readerName := "reader.reader"
+	mainDir := "/flies/"
+	containerDir := "/db-files/"
+	err := copyFilesToContainer(readerName, mainDir, containerDir)
+	if err != nil {
+		logger.Error(
+			"err",
+			slog.String("failed to copying file"),
+			err.Error(),
+		)
+	}
 
 	filepath := `/db-files/AverageIncomes.xlsx`
 
@@ -186,4 +199,15 @@ func convertingStringsToStruct(dataParts []string, valueParts []string, region s
 	}
 
 	return regionIncomes, nil
+}
+
+func copyFilesToContainer(containerName string, mainDir string, containerDir string) error {
+	cmd := exec.Command("docker", "cp", mainDir, fmt.Sprintf("%s:%s", containerName, containerDir))
+
+	_, err := cmd.CombinedOutput()
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
