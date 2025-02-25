@@ -54,4 +54,6 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.reader
-      no_cache: true
+    volumes:
+      - ./db-files :/files
+

@@ -21,6 +21,7 @@ type RegionIncomes struct {
 	AverageRegionIncomes float32
 }
 
+// TODO: периодический скрипт по копированию файла в контейнер перед открытием
 func main() {
 
 	log.Printf("Server started")
@@ -29,7 +30,7 @@ func main() {
 	slog.SetDefault(logger)
 
 	//TODO: все сильно под вопросом/volumes/
-	filepath := `/mnt/network_share/AverageIncomes.xlsx`
+	filepath := `/db-files/AverageIncomes.xlsx`
 
 	timoutInterval := time.Second * 5
 	ticker := time.NewTicker(timoutInterval)
@@ -48,12 +49,35 @@ func main() {
 func readingDbFile(logger *slog.Logger, filepath string) {
 	const maxRetries = 3
 
-	file, err := excelize.OpenFile(filepath)
-	if err != nil {
+	var file *excelize.File
+	var err error
+	for attempt := 1; attempt <= maxRetries; attempt++ {
+		if file, err = excelize.OpenFile(filepath); err == nil {
+			break
+		}
+		logger.Error(
+			"err",
+			"failed to get file, retrying...",
+			"attemp", fmt.Sprintf(": #%d of #%d", attempt, maxRetries),
+			err.Error(),
+		)
+		time.Sleep(time.Second)
+
+		if attempt == maxRetries {
+			logger.Error(
+				"err",
+				"failed to open file",
+				err.Error(),
+			)
+			os.Exit(1)
+		}
+	}
+
+	if file == nil {
 		logger.Error(
 			"err",
 			"failed to open file",
-			err.Error(),
+			errors.New("file is nil"),
 		)
 		os.Exit(1)
 	}
