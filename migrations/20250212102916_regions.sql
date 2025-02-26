@@ -1,7 +1,8 @@
 -- +goose Up
 -- +goose StatementBegin
 CREATE TABLE IF NOT EXISTS regions (
-    RegionId INTEGER PRIMARY KEY,
+    id SERIAL PRIMARY KEY,
+    RegionId INTEGER unique,
     RegionName VARCHAR(64));
 -- +goose StatementEnd
 
