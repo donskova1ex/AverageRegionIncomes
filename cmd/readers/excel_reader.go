@@ -5,13 +5,11 @@ import (
 	"log"
 	"log/slog"
 	"os"
-	"os/exec"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
 
-	"github.com/joho/godotenv"
 	"github.com/xuri/excelize/v2"
 )
 
@@ -30,27 +28,27 @@ func main() {
 	logger := slog.New(logJSONHandler)
 	slog.SetDefault(logger)
 
-	err := godotenv.Load()
-	if err != nil {
-		logger.Error(
-			"failed to load .env file",
-			slog.String("err", err.Error()),
-		)
-		os.Exit(1)
-	}
+	//err := godotenv.Load()
+	//if err != nil {
+	//	logger.Error(
+	//		"failed to load .env file",
+	//		slog.String("err", err.Error()),
+	//	)
+	//	os.Exit(1)
+	//}
+	//
+	//readerName := os.Getenv("READER_NAME")
+	//mainDir := os.Getenv("MAIN_DIR")
+	//containerDir := os.Getenv("CONTAINER_DIR")
+	//
+	//err = copyFilesToContainer(readerName, mainDir, containerDir)
 
-	readerName := os.Getenv("READER_NAME")
-	mainDir := os.Getenv("MAIN_DIR")
-	containerDir := os.Getenv("CONTAINER_DIR")
-
-	err = copyFilesToContainer(readerName, mainDir, containerDir)
-
-	if err != nil {
-		logger.Error(
-			"failed to copying file",
-			slog.String("err", err.Error()),
-		)
-	}
+	//if err != nil {
+	//	logger.Error(
+	//		"failed to copying file",
+	//		slog.String("err", err.Error()),
+	//	)
+	//}
 
 	filepath := `/db-files/AverageIncomes.xlsx`
 
@@ -205,13 +203,13 @@ func convertingStringsToStruct(dataParts []string, valueParts []string, region s
 	return regionIncomes, nil
 }
 
-func copyFilesToContainer(containerName string, mainDir string, containerDir string) error {
-	cmd := exec.Command("docker", "cp", mainDir, fmt.Sprintf("%s:%s", containerName, containerDir))
-
-	_, err := cmd.CombinedOutput()
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
+//func copyFilesToContainer(containerName string, mainDir string, containerDir string) error {
+//	cmd := exec.Command("docker", "cp", mainDir, fmt.Sprintf("%s:%s", containerName, containerDir))
+//
+//	_, err := cmd.CombinedOutput()
+//	if err != nil {
+//		return err
+//	}
+//
+//	return nil
+//}
