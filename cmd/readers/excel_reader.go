@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"log"
 	"log/slog"
@@ -12,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/joho/godotenv"
 	"github.com/xuri/excelize/v2"
 )
 
@@ -30,15 +30,25 @@ func main() {
 	logger := slog.New(logJSONHandler)
 	slog.SetDefault(logger)
 
-	readerName := "reader.reader"
-	mainDir := "/flies/"
-	containerDir := "/db-files/"
-	err := copyFilesToContainer(readerName, mainDir, containerDir)
+	err := godotenv.Load()
 	if err != nil {
 		logger.Error(
-			"err",
-			slog.String("failed to copying file"),
-			err.Error(),
+			"failed to load .env file",
+			slog.String("err", err.Error()),
+		)
+		os.Exit(1)
+	}
+
+	readerName := os.Getenv("READER_NAME")
+	mainDir := os.Getenv("MAIN_DIR")
+	containerDir := os.Getenv("CONTAINER_DIR")
+
+	err = copyFilesToContainer(readerName, mainDir, containerDir)
+
+	if err != nil {
+		logger.Error(
+			"failed to copying file",
+			slog.String("err", err.Error()),
 		)
 	}
 
@@ -77,9 +87,8 @@ func readingDbFile(logger *slog.Logger, filepath string) {
 
 		if attempt == maxRetries {
 			logger.Error(
-				"err",
 				"failed to open file",
-				err.Error(),
+				slog.String("err", err.Error()),
 			)
 			os.Exit(1)
 		}
@@ -87,9 +96,8 @@ func readingDbFile(logger *slog.Logger, filepath string) {
 
 	if file == nil {
 		logger.Error(
-			"err",
 			"failed to open file",
-			errors.New("file is nil"),
+			slog.String("err", "file is nil"),
 		)
 		os.Exit(1)
 	}
@@ -99,9 +107,8 @@ func readingDbFile(logger *slog.Logger, filepath string) {
 			err := file.Close()
 			if err != nil {
 				logger.Error(
-					"err",
 					"failed to close file",
-					err.Error(),
+					slog.String("err", err.Error()),
 				)
 			}
 		}
@@ -110,9 +117,8 @@ func readingDbFile(logger *slog.Logger, filepath string) {
 	sheets := file.GetSheetList()
 	if len(sheets) == 0 {
 		logger.Error(
-			"err",
 			"failed to get file sheets",
-			errors.New("no file sheets found"),
+			slog.String("err", "no file sheets found"),
 		)
 		os.Exit(1)
 	}
@@ -132,9 +138,8 @@ func readingDbFile(logger *slog.Logger, filepath string) {
 	}
 	if err != nil {
 		logger.Error(
-			"err",
 			"failed to get table rows",
-			err.Error(),
+			slog.String("err", err.Error()),
 		)
 		os.Exit(1)
 	}
@@ -151,9 +156,8 @@ func readingDbFile(logger *slog.Logger, filepath string) {
 			regionIncomes, err := convertingStringsToStruct(rows[0][1:], rows[i+1][1:], region)
 			if err != nil {
 				logger.Error(
-					"err",
 					"failed to convert strings to domain struct",
-					err.Error(),
+					slog.String("err", err.Error()),
 				)
 				return
 			}
