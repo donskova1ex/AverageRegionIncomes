@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"log/slog"
 	"os"
 	"strconv"
@@ -23,10 +22,13 @@ type RegionIncomes struct {
 // TODO: периодический скрипт по копированию файла в контейнер перед открытием
 func main() {
 
-	log.Printf("Server started")
+	//log.Printf("Server started")
 	logJSONHandler := slog.NewJSONHandler(os.Stdout, nil)
 	logger := slog.New(logJSONHandler)
 	slog.SetDefault(logger)
+	logger.Info(
+		"Server started",
+	)
 
 	//err := godotenv.Load()
 	//if err != nil {
