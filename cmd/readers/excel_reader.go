@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"os/exec"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 	"time"
 
@@ -75,13 +77,34 @@ func processExcelFile(logger *slog.Logger, reader *repositories.ExcelReader, fil
 	logger.Info("successfully saved records to database", "count", len(incomes))
 }
 
-// func copyFilesToContainer(containerName string, mainDir string, containerDir string) error {
-// 	cmd := exec.Command("docker", "cp", mainDir, fmt.Sprintf("%s:%s", containerName, containerDir))
+func copyFilesToContainer(containerName string, mainDir string, containerDir string) error {
 
-// 	_, err := cmd.CombinedOutput()
-// 	if err != nil {
-// 		return err
-// 	}
+	checkCmd := exec.Command("docker", "ps", "-a", "--filter", fmt.Sprintf("name=%s", containerName), "--format", "{{.Names}}")
 
-// 	return nil
-// }
+	out, err := checkCmd.Output()
+	if err != nil {
+		return fmt.Errorf("failed to check check container existence. Error: %w", err)
+	}
+
+	if len(out) == 0 || string(out) != containerName+"\n" {
+		return fmt.Errorf("container %s does not exists", containerName)
+	}
+
+	files, err := filepath.Glob(filepath.Join(mainDir, "*"))
+	if err != nil {
+		return err
+	}
+	if len(files) == 0 {
+		return fmt.Errorf("directory %s is empty", mainDir)
+	}
+
+	for _, file := range files {
+		copyCmd := exec.Command("docker", "cp", file, fmt.Sprintf("%s:%s", containerName, containerDir))
+		output, err := copyCmd.CombinedOutput()
+		if err != nil {
+			return fmt.Errorf("failed to copy [%s]: [%s]. Error: %w", file, string(output), err)
+		}
+	}
+
+	return nil
+}
