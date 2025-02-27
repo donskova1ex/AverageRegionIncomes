@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
-	"os/exec"
 	"os/signal"
 	"syscall"
 	"time"
@@ -52,61 +51,7 @@ func main() {
 			return
 		}
 	}
-	/*err := godotenv.Load(".env.dev")
-	if err != nil {
-		log.Fatal("Error loading .env file")
-	}
 
-	pgDSN := os.Getenv("POSTGRES_DSN")
-	if pgDSN == "" {
-		logger.Error("empty POSTGRES_DSN")
-		os.Exit(1)
-	}
-
-	db, err := repositories.NewPostgresDB(ctx, pgDSN)
-
-	if err != nil {
-		logger.Error(
-			"can not create postgres db connection",
-			slog.String("err", err.Error()),
-		)
-		return
-	}
-	repository := repositories.NewRepository(db, logger)*/
-
-	//err := godotenv.Load()
-	//if err != nil {
-	//	logger.Error(
-	//		"failed to load .env file",
-	//		slog.String("err", err.Error()),
-	//	)
-	//	os.Exit(1)
-	//}
-	//
-	//readerName := os.Getenv("READER_NAME")
-	//mainDir := os.Getenv("MAIN_DIR")
-	//containerDir := os.Getenv("CONTAINER_DIR")
-	//
-	//err = copyFilesToContainer(readerName, mainDir, containerDir)
-
-	//if err != nil {
-	//	logger.Error(
-	//		"failed to copying file",
-	//		slog.String("err", err.Error()),
-	//	)
-	//}
-
-}
-
-func copyFilesToContainer(containerName string, mainDir string, containerDir string) error {
-	cmd := exec.Command("docker", "cp", mainDir, fmt.Sprintf("%s:%s", containerName, containerDir))
-
-	_, err := cmd.CombinedOutput()
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
 
 func processExcelFile(logger *slog.Logger, reader *repositories.ExcelReader, filepath string) {
@@ -117,7 +62,7 @@ func processExcelFile(logger *slog.Logger, reader *repositories.ExcelReader, fil
 			slog.String("err", err.Error()),
 			slog.String("filepath", filepath),
 		)
-		return
+		os.Exit(1)
 	}
 
 	logger.Info("successfully read file",
@@ -129,3 +74,14 @@ func processExcelFile(logger *slog.Logger, reader *repositories.ExcelReader, fil
 	}
 	logger.Info("successfully saved records to database", "count", len(incomes))
 }
+
+// func copyFilesToContainer(containerName string, mainDir string, containerDir string) error {
+// 	cmd := exec.Command("docker", "cp", mainDir, fmt.Sprintf("%s:%s", containerName, containerDir))
+
+// 	_, err := cmd.CombinedOutput()
+// 	if err != nil {
+// 		return err
+// 	}
+
+// 	return nil
+// }

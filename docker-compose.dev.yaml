@@ -47,10 +47,14 @@ services:
       postgres:
         condition: service_healthy
   reader-up:
-    container_name: reader.reader
+    environment:
+      - READER_NAME=${READER_NAME}
+    container_name: ${READER_NAME}
     build:
       context: .
       dockerfile: Dockerfile.reader
     volumes:
       - /db-files
+    env_file:
+      - .env.dev
 
