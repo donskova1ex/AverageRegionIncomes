@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
-	"strconv"
-	"strings"
-	"sync"
+	"os/exec"
+	"os/signal"
+	"syscall"
 	"time"
 
-	"github.com/xuri/excelize/v2"
+	"github.com/donskova1ex/AverageRegionIncomes/internal/repositories"
 )
 
 type RegionIncomes struct {
@@ -21,14 +21,58 @@ type RegionIncomes struct {
 
 // TODO: периодический скрипт по копированию файла в контейнер перед открытием
 func main() {
+	//ctx, cancel := context.WithCancel(context.Background())
+	//defer cancel()
 
-	//log.Printf("Server started")
 	logJSONHandler := slog.NewJSONHandler(os.Stdout, nil)
 	logger := slog.New(logJSONHandler)
 	slog.SetDefault(logger)
 	logger.Info(
 		"Server started",
 	)
+
+	cfg := repositories.DefaultParserConfig()
+
+	excelReader := repositories.NewExcelReader(logger, cfg.MaxRetries, cfg.RetryDelay)
+
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
+
+	ticker := time.NewTicker(cfg.ParsingInterval)
+	defer ticker.Stop()
+
+	logger.Info("File parsing started")
+
+	for {
+		select {
+		case <-ticker.C:
+			processExcelFile(logger, excelReader, cfg.FilePath)
+		case <-stop:
+			logger.Info("shutting down server")
+			return
+		}
+	}
+	/*err := godotenv.Load(".env.dev")
+	if err != nil {
+		log.Fatal("Error loading .env file")
+	}
+
+	pgDSN := os.Getenv("POSTGRES_DSN")
+	if pgDSN == "" {
+		logger.Error("empty POSTGRES_DSN")
+		os.Exit(1)
+	}
+
+	db, err := repositories.NewPostgresDB(ctx, pgDSN)
+
+	if err != nil {
+		logger.Error(
+			"can not create postgres db connection",
+			slog.String("err", err.Error()),
+		)
+		return
+	}
+	repository := repositories.NewRepository(db, logger)*/
 
 	//err := godotenv.Load()
 	//if err != nil {
@@ -52,166 +96,36 @@ func main() {
 	//	)
 	//}
 
-	filepath := `/db-files/AverageIncomes.xlsx`
-
-	timoutInterval := time.Second * 5
-	ticker := time.NewTicker(timoutInterval)
-	defer ticker.Stop()
-
-	for range ticker.C {
-		readingDbFile(logger, filepath)
-		logger.Info(
-			"file is reading from Excel",
-			slog.String("file", filepath),
-		)
-	}
-
 }
 
-func readingDbFile(logger *slog.Logger, filepath string) {
-	const maxRetries = 3
+func copyFilesToContainer(containerName string, mainDir string, containerDir string) error {
+	cmd := exec.Command("docker", "cp", mainDir, fmt.Sprintf("%s:%s", containerName, containerDir))
 
-	var file *excelize.File
-	var err error
-	for attempt := 1; attempt <= maxRetries; attempt++ {
-		if file, err = excelize.OpenFile(filepath); err == nil {
-			break
-		}
-		logger.Error(
-			"err",
-			"failed to get file, retrying...",
-			"attemp", fmt.Sprintf(": #%d of #%d", attempt, maxRetries),
-			err.Error(),
-		)
-		time.Sleep(time.Second)
-
-		if attempt == maxRetries {
-			logger.Error(
-				"failed to open file",
-				slog.String("err", err.Error()),
-			)
-			os.Exit(1)
-		}
+	_, err := cmd.CombinedOutput()
+	if err != nil {
+		return err
 	}
 
-	if file == nil {
-		logger.Error(
-			"failed to open file",
-			slog.String("err", "file is nil"),
-		)
-		os.Exit(1)
-	}
+	return nil
+}
 
-	defer func(file *excelize.File) {
-		if file != nil {
-			err := file.Close()
-			if err != nil {
-				logger.Error(
-					"failed to close file",
-					slog.String("err", err.Error()),
-				)
-			}
-		}
-	}(file)
-
-	sheets := file.GetSheetList()
-	if len(sheets) == 0 {
-		logger.Error(
-			"failed to get file sheets",
-			slog.String("err", "no file sheets found"),
-		)
-		os.Exit(1)
-	}
-
-	var rows [][]string
-	for attempt := 1; attempt <= maxRetries; attempt++ {
-		if rows, err = file.GetRows(sheets[0]); err == nil {
-			break
-		}
-		logger.Error(
-			"err",
-			"failed to get rows, retrying...",
-			"attemp", fmt.Sprintf(": #%d of #%d", attempt, maxRetries),
-			err.Error(),
-		)
-		time.Sleep(time.Second)
-	}
+func processExcelFile(logger *slog.Logger, reader *repositories.ExcelReader, filepath string) {
+	incomes, err := reader.ReadFile(filepath)
 	if err != nil {
 		logger.Error(
-			"failed to get table rows",
+			"failed to read file",
 			slog.String("err", err.Error()),
+			slog.String("filepath", filepath),
 		)
-		os.Exit(1)
+		return
 	}
 
-	var allRegionIncomes []*RegionIncomes
+	logger.Info("successfully read file",
+		"filepath", filepath,
+		"records", len(incomes))
 
-	var mu = &sync.Mutex{}
-	var wg = &sync.WaitGroup{}
-	wg.Add(len(rows[1:]))
-	for i, row := range rows[1:] {
-		go func(i int, row []string) {
-			defer wg.Done()
-			region := row[0]
-			regionIncomes, err := convertingStringsToStruct(rows[0][1:], rows[i+1][1:], region)
-			if err != nil {
-				logger.Error(
-					"failed to convert strings to domain struct",
-					slog.String("err", err.Error()),
-				)
-				return
-			}
-			mu.Lock()
-			allRegionIncomes = append(allRegionIncomes, regionIncomes...)
-			mu.Unlock()
-		}(i, row)
-	}
-	wg.Wait()
-
-	for _, regionIncome := range allRegionIncomes {
+	for _, regionIncome := range incomes {
 		fmt.Println(regionIncome.Region, regionIncome.Year, regionIncome.Quarter, regionIncome.AverageRegionIncomes)
 	}
+	logger.Info("successfully saved records to database", "count", len(incomes))
 }
-
-func convertingStringsToStruct(dataParts []string, valueParts []string, region string) ([]*RegionIncomes, error) {
-	var regionIncomes []*RegionIncomes
-
-	for index, value := range dataParts {
-		parts := strings.Split(value, ".")
-
-		year, err := strconv.ParseInt(parts[0], 10, 32)
-		if err != nil {
-			return nil, fmt.Errorf("failed to convert year to int: %w", err)
-		}
-
-		quarter, err := strconv.ParseInt(parts[1], 10, 32)
-		if err != nil {
-			return nil, fmt.Errorf("failed to convert quarter to int: %w", err)
-		}
-
-		income, err := strconv.ParseFloat(valueParts[index], 32)
-		if err != nil {
-			return nil, fmt.Errorf("failed to convert income to float: %w", err)
-		}
-
-		regionIncomes = append(regionIncomes, &RegionIncomes{
-			Region:               region,
-			Year:                 int32(year),
-			Quarter:              int32(quarter),
-			AverageRegionIncomes: float32(income),
-		})
-	}
-
-	return regionIncomes, nil
-}
-
-//func copyFilesToContainer(containerName string, mainDir string, containerDir string) error {
-//	cmd := exec.Command("docker", "cp", mainDir, fmt.Sprintf("%s:%s", containerName, containerDir))
-//
-//	_, err := cmd.CombinedOutput()
-//	if err != nil {
-//		return err
-//	}
-//
-//	return nil
-//}
