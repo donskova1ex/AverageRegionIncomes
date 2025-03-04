@@ -17,7 +17,6 @@ import (
 	"github.com/donskova1ex/AverageRegionIncomes/internal/repositories"
 )
 
-// TODO: периодический скрипт по копированию файла в контейнер перед открытием
 func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -29,12 +28,12 @@ func main() {
 		"Server started",
 	)
 
-	err := godotenv.Load(".env.dev")
+	err := godotenv.Load("/app/.env.dev")
 	if err != nil {
 		log.Fatalf("Error loading .env file")
 	}
 
-	pgDSN := os.Getenv("POSTGRES_DSN")
+	pgDSN := os.Getenv("GOOSE_DBSTRING")
 	if pgDSN == "" {
 		logger.Error("empty POSTGRES_DSN")
 		os.Exit(1)

@@ -3,6 +3,8 @@ services:
     container_name: average_incomes.postgres
     image: postgres:15
     hostname: postgres
+    env_file:
+      - .env.dev
     environment:
       - POSTGRES_DB=${POSTGRES_DB}
       - POSTGRES_USER=${POSTGRES_USER}
@@ -47,14 +49,18 @@ services:
       postgres:
         condition: service_healthy
   reader-up:
+    env_file:
+      - .env.dev
     environment:
       - READER_NAME=${READER_NAME}
+      - POSTGRES_DSN=${POSTGRES_DSN}
     container_name: ${READER_NAME}
     build:
       context: .
       dockerfile: Dockerfile.reader
     volumes:
       - /db-files
-    env_file:
-      - .env.dev
+      - ./.env.dev:/app/.env.dev
+    working_dir: /app
+
 

@@ -8,7 +8,7 @@ dev-build: dev-reader-build
 	$(DEV_COMPOSE) build
 
 dev-up: dev-build dev-reader-up
-	$(DEV_COMPOSE) up -d
+	$(DEV_COMPOSE) --env-file .env.dev up -d
 
 dev-migrate-up:
 	docker-compose -f docker-compose.dev.yaml up -d migrations-up
