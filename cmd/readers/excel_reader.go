@@ -1,7 +1,11 @@
 package main
 
 import (
+	"context"
 	"fmt"
+	"github.com/donskova1ex/AverageRegionIncomes/internal/processors"
+	"github.com/joho/godotenv"
+	"log"
 	"log/slog"
 	"os"
 	"os/exec"
@@ -13,17 +17,10 @@ import (
 	"github.com/donskova1ex/AverageRegionIncomes/internal/repositories"
 )
 
-type RegionIncomes struct {
-	Region               string
-	Year                 int32
-	Quarter              int32
-	AverageRegionIncomes float32
-}
-
 // TODO: периодический скрипт по копированию файла в контейнер перед открытием
 func main() {
-	//ctx, cancel := context.WithCancel(context.Background())
-	//defer cancel()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	logJSONHandler := slog.NewJSONHandler(os.Stdout, nil)
 	logger := slog.New(logJSONHandler)
@@ -32,6 +29,26 @@ func main() {
 		"Server started",
 	)
 
+	err := godotenv.Load(".env.dev")
+	if err != nil {
+		log.Fatalf("Error loading .env file")
+	}
+
+	pgDSN := os.Getenv("POSTGRES_DSN")
+	if pgDSN == "" {
+		logger.Error("empty POSTGRES_DSN")
+		os.Exit(1)
+	}
+
+	db, err := repositories.NewPostgresDB(ctx, pgDSN)
+	if err != nil {
+		logger.Error("error connecting to database", slog.String("err", err.Error()))
+		return
+	}
+	defer db.Close()
+
+	repository := repositories.NewRepository(db, logger)
+	excelReaderProcessor := processors.NewExcelReader(repository, logger)
 	cfg := repositories.DefaultParserConfig()
 
 	excelReader := repositories.NewExcelReader(logger, cfg.MaxRetries, cfg.RetryDelay)
@@ -47,7 +64,7 @@ func main() {
 	for {
 		select {
 		case <-ticker.C:
-			processExcelFile(logger, excelReader, cfg.FilePath)
+			processExcelFile(ctx, excelReaderProcessor, logger, excelReader, cfg.FilePath)
 		case <-stop:
 			logger.Info("shutting down server")
 			return
@@ -56,7 +73,13 @@ func main() {
 
 }
 
-func processExcelFile(logger *slog.Logger, reader *repositories.ExcelReader, filepath string) {
+func processExcelFile(
+	ctx context.Context,
+	p *processors.ExcelReader,
+	logger *slog.Logger,
+	reader *repositories.ExcelReader,
+	filepath string,
+) {
 	incomes, err := reader.ReadFile(filepath)
 	if err != nil {
 		logger.Error(
@@ -71,9 +94,10 @@ func processExcelFile(logger *slog.Logger, reader *repositories.ExcelReader, fil
 		"filepath", filepath,
 		"records", len(incomes))
 
-	for _, regionIncome := range incomes {
-		fmt.Println(regionIncome.Region, regionIncome.Year, regionIncome.Quarter, regionIncome.AverageRegionIncomes)
+	if err := p.ExcelReaderRepository.CreateRegionIncomes(ctx, incomes); err != nil {
+		logger.Error("failed to create region incomes", slog.String("err", err.Error()))
 	}
+
 	logger.Info("successfully saved records to database", "count", len(incomes))
 }
 

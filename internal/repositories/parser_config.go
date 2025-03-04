@@ -14,7 +14,7 @@ type ParserConfig struct {
 func DefaultParserConfig() *ParserConfig {
 	return &ParserConfig{
 		FilePath:        "/db-files/AverageIncomes.xlsx",
-		ParsingInterval: 5 * time.Second,
+		ParsingInterval: 5 * time.Hour,
 		MaxRetries:      3,
 		RetryDelay:      time.Second,
 	}

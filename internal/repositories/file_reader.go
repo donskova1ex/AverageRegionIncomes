@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"fmt"
+	"github.com/donskova1ex/AverageRegionIncomes/internal/domain"
 	"log/slog"
 	"strconv"
 	"strings"
@@ -10,13 +11,6 @@ import (
 
 	"github.com/xuri/excelize/v2"
 )
-
-type RegionIncome struct {
-	Region               string
-	Year                 int32
-	Quarter              int32
-	AverageRegionIncomes float32
-}
 
 type ExcelReader struct {
 	logger     *slog.Logger
@@ -71,8 +65,8 @@ func (r *ExcelReader) getRowsWithRetry(file *excelize.File, sheet string) ([][]s
 	return nil, err
 }
 
-func (r *ExcelReader) processRows(rows [][]string) ([]*RegionIncome, error) {
-	var allRegionIncomes []*RegionIncome
+func (r *ExcelReader) processRows(rows [][]string) ([]*domain.ExcelRegionIncome, error) {
+	var allRegionIncomes []*domain.ExcelRegionIncome
 	var mu sync.Mutex
 	var wg sync.WaitGroup
 
@@ -98,8 +92,8 @@ func (r *ExcelReader) processRows(rows [][]string) ([]*RegionIncome, error) {
 	return allRegionIncomes, nil
 }
 
-func (r *ExcelReader) convertRowToIncomes(dataParts []string, valueParts []string, region string) ([]*RegionIncome, error) {
-	var regionIncomes []*RegionIncome
+func (r *ExcelReader) convertRowToIncomes(dataParts []string, valueParts []string, region string) ([]*domain.ExcelRegionIncome, error) {
+	var regionIncomes []*domain.ExcelRegionIncome
 
 	for index, value := range dataParts {
 		parts := strings.Split(value, ".")
@@ -126,7 +120,7 @@ func (r *ExcelReader) convertRowToIncomes(dataParts []string, valueParts []strin
 			return nil, fmt.Errorf("failed to parse income: %w", err)
 		}
 
-		regionIncomes = append(regionIncomes, &RegionIncome{
+		regionIncomes = append(regionIncomes, &domain.ExcelRegionIncome{
 			Region:               region,
 			Year:                 int32(year),
 			Quarter:              int32(quarter),
@@ -137,7 +131,7 @@ func (r *ExcelReader) convertRowToIncomes(dataParts []string, valueParts []strin
 	return regionIncomes, nil
 }
 
-func (r *ExcelReader) ReadFile(filepath string) ([]*RegionIncome, error) {
+func (r *ExcelReader) ReadFile(filepath string) ([]*domain.ExcelRegionIncome, error) {
 	file, err := r.openFileWithRetry(filepath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open file: %w", err)

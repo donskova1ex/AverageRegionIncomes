@@ -15,4 +15,3 @@ CREATE TABLE IF NOT EXISTS region_incomes (
 -- +goose StatementBegin
 DROP TABLE IF EXISTS region_incomes;
 -- +goose StatementEnd
-//TODO: Формат данных не отрицательный
