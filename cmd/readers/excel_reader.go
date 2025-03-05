@@ -30,7 +30,7 @@ func main() {
 		os.Exit(1)
 	}
 	logger.Info("Configuration loaded")
-	//pgDSN := `postgres://dev:dev1234@localhost:5432/dev?sslmode=disable`
+
 	db, err := repositories.NewPostgresDB(ctx, cfg.PGDSN)
 	if err != nil {
 		logger.Error("error connecting to database", slog.String("err", err.Error()))
