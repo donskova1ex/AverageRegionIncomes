@@ -99,3 +99,33 @@ func (r *Repository) getRegionsMap(ctx context.Context, tx *sqlx.Tx) (map[string
 
 	return regionsMap, nil
 }
+
+func (r *Repository) GetRegionIncomes(ctx context.Context, regionId int32, year int32, quarter int32) (*domain.ExcelRegionIncome, error) {
+
+	var paramYear int32
+	var paramQuarter int32
+	paramYear = year
+	paramQuarter = quarter
+	if paramYear == 0 && paramQuarter == 0 {
+
+	}
+	return nil, nil
+}
+func (r *Repository) getRegionIncomeByRegionID(ctx context.Context, regionId int32) (*domain.ExcelRegionIncome, error) {
+
+	//query := `SELECT regionid, year, quarter, value FROM region_incomes
+	//            WHERE regionid = $1 AND id IN
+	//            (SELECT id FROM region_incomes
+	//            WHERE regionid = $1
+	//            ORDER BY id DESC LIMIT 4)
+	//            ORDER BY id ASC`
+	//TODO: доделать запросы
+	//rows, err := r.db.QueryxContext(ctx, query, regionId)
+	//if errors.Is(err, sql.ErrNoRows) {
+	//	return nil, fmt.Errorf("region incomes not found")
+	//}
+	//if err != nil {
+	//	return nil, fmt.Errorf("error executing query: %w", err)
+	//}
+	return nil, nil
+}
