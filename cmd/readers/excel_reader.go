@@ -2,15 +2,11 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"github.com/donskova1ex/AverageRegionIncomes/internal/processors"
-	"github.com/joho/godotenv"
-	"log"
+	"github.com/jmoiron/sqlx"
 	"log/slog"
 	"os"
-	"os/exec"
 	"os/signal"
-	"path/filepath"
 	"syscall"
 	"time"
 
@@ -28,28 +24,26 @@ func main() {
 		"Server started",
 	)
 
-	err := godotenv.Load("/app/.env.dev")
+	cfg, err := repositories.DefaultParserConfig("/app/.env.dev")
 	if err != nil {
-		log.Fatalf("Error loading .env file")
-	}
-
-	pgDSN := os.Getenv("POSTGRES_DSN")
-	if pgDSN == "" {
-		logger.Error("empty POSTGRES_DSN")
+		logger.Error("failed to load configuration", slog.String("err", err.Error()))
 		os.Exit(1)
 	}
-
+	logger.Info("Configuration loaded")
 	//pgDSN := `postgres://dev:dev1234@localhost:5432/dev?sslmode=disable`
-
-	db, err := repositories.NewPostgresDB(ctx, pgDSN)
+	db, err := repositories.NewPostgresDB(ctx, cfg.PGDSN)
 	if err != nil {
 		logger.Error("error connecting to database", slog.String("err", err.Error()))
 		return
 	}
-	defer db.Close()
+	defer func(db *sqlx.DB) {
+		err := db.Close()
+		if err != nil {
+			logger.Error("error closing db", slog.String("err", err.Error()))
+		}
+	}(db)
 
 	repository := repositories.NewRepository(db, logger)
-	cfg := repositories.DefaultParserConfig()
 
 	processExcelFile(ctx, repository, logger, cfg)
 
@@ -105,34 +99,34 @@ func processExcelFile(
 	logger.Info("successfully saved records to database", "count", len(incomes))
 }
 
-func copyFilesToContainer(containerName string, mainDir string, containerDir string) error {
-
-	checkCmd := exec.Command("docker", "ps", "-a", "--filter", fmt.Sprintf("name=%s", containerName), "--format", "{{.Names}}")
-
-	out, err := checkCmd.Output()
-	if err != nil {
-		return fmt.Errorf("failed to check check container existence. Error: %w", err)
-	}
-
-	if len(out) == 0 || string(out) != containerName+"\n" {
-		return fmt.Errorf("container %s does not exists", containerName)
-	}
-
-	files, err := filepath.Glob(filepath.Join(mainDir, "*"))
-	if err != nil {
-		return err
-	}
-	if len(files) == 0 {
-		return fmt.Errorf("directory %s is empty", mainDir)
-	}
-
-	for _, file := range files {
-		copyCmd := exec.Command("docker", "cp", file, fmt.Sprintf("%s:%s", containerName, containerDir))
-		output, err := copyCmd.CombinedOutput()
-		if err != nil {
-			return fmt.Errorf("failed to copy [%s]: [%s]. Error: %w", file, string(output), err)
-		}
-	}
-
-	return nil
-}
+//func copyFilesToContainer(containerName string, mainDir string, containerDir string) error {
+//
+//	checkCmd := exec.Command("docker", "ps", "-a", "--filter", fmt.Sprintf("name=%s", containerName), "--format", "{{.Names}}")
+//
+//	out, err := checkCmd.Output()
+//	if err != nil {
+//		return fmt.Errorf("failed to check check container existence. Error: %w", err)
+//	}
+//
+//	if len(out) == 0 || string(out) != containerName+"\n" {
+//		return fmt.Errorf("container %s does not exists", containerName)
+//	}
+//
+//	files, err := filepath.Glob(filepath.Join(mainDir, "*"))
+//	if err != nil {
+//		return err
+//	}
+//	if len(files) == 0 {
+//		return fmt.Errorf("directory %s is empty", mainDir)
+//	}
+//
+//	for _, file := range files {
+//		copyCmd := exec.Command("docker", "cp", file, fmt.Sprintf("%s:%s", containerName, containerDir))
+//		output, err := copyCmd.CombinedOutput()
+//		if err != nil {
+//			return fmt.Errorf("failed to copy [%s]: [%s]. Error: %w", file, string(output), err)
+//		}
+//	}
+//
+//	return nil
+//}

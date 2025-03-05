@@ -28,7 +28,7 @@ func (r *Repository) CreateRegionIncomes(ctx context.Context, exRegionIncomes []
 
 	regionsMap, err := r.getRegionsMap(ctx, tx)
 	if err != nil {
-		return fmt.Errorf("error fetching regions map: %w", err)
+		return fmt.Errorf("error filling regions map: %w", err)
 	}
 
 	regionIncomes := make([]*domain.RegionIncomes, 0, len(exRegionIncomes))
@@ -42,7 +42,10 @@ func (r *Repository) CreateRegionIncomes(ctx context.Context, exRegionIncomes []
 				Quarter:  region.Quarter,
 			})
 		} else {
-			r.logger.Warn("region not found in regions map", slog.String("region", region.Region))
+			r.logger.Warn(
+				"region not found in regions map",
+				slog.String("region", fmt.Sprintf("[%s]", region.Region)),
+			)
 		}
 	}
 
