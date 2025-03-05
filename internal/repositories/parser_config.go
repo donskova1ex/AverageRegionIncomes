@@ -51,13 +51,10 @@ func DefaultParserConfig(envPath string) (*ParserConfig, error) {
 
 	return &ParserConfig{
 		FilePath:        defaultFilePath,
-		ParsingInterval: 30 * time.Second,
+		ParsingInterval: 5 * time.Hour,
 		MaxRetries:      3,
 		RetryDelay:      time.Second,
 		PGDSN:           pgDSN,
-		ContainerName:   containerName,
-		MainDir:         mainReaderDir,
-		ContainerDir:    readerContainerDir,
 	}, nil
 }
 func NewParserConfig(filepath string, parsingInterval time.Duration, maxRetries int, retryDelay time.Duration) *ParserConfig {
