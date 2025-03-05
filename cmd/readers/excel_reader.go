@@ -33,11 +33,13 @@ func main() {
 		log.Fatalf("Error loading .env file")
 	}
 
-	pgDSN := os.Getenv("GOOSE_DBSTRING")
+	pgDSN := os.Getenv("POSTGRES_DSN")
 	if pgDSN == "" {
 		logger.Error("empty POSTGRES_DSN")
 		os.Exit(1)
 	}
+
+	//pgDSN := `postgres://dev:dev1234@localhost:5432/dev?sslmode=disable`
 
 	db, err := repositories.NewPostgresDB(ctx, pgDSN)
 	if err != nil {
@@ -47,10 +49,9 @@ func main() {
 	defer db.Close()
 
 	repository := repositories.NewRepository(db, logger)
-	excelReaderProcessor := processors.NewExcelReader(repository, logger)
 	cfg := repositories.DefaultParserConfig()
 
-	excelReader := repositories.NewExcelReader(logger, cfg.MaxRetries, cfg.RetryDelay)
+	processExcelFile(ctx, repository, logger, cfg)
 
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
@@ -58,12 +59,13 @@ func main() {
 	ticker := time.NewTicker(cfg.ParsingInterval)
 	defer ticker.Stop()
 
-	logger.Info("File parsing started")
+	logger.Info("Parser is running in the background")
 
 	for {
 		select {
 		case <-ticker.C:
-			processExcelFile(ctx, excelReaderProcessor, logger, excelReader, cfg.FilePath)
+			logger.Info("Parser started")
+			processExcelFile(ctx, repository, logger, cfg)
 		case <-stop:
 			logger.Info("shutting down server")
 			return
@@ -74,26 +76,29 @@ func main() {
 
 func processExcelFile(
 	ctx context.Context,
-	p *processors.ExcelReader,
+	repository *repositories.Repository,
 	logger *slog.Logger,
-	reader *repositories.ExcelReader,
-	filepath string,
+	readerCfg *repositories.ParserConfig,
 ) {
-	incomes, err := reader.ReadFile(filepath)
+
+	reader := repositories.NewExcelReader(logger, readerCfg.MaxRetries, readerCfg.RetryDelay)
+
+	incomes, err := reader.ReadFile(readerCfg.FilePath)
 	if err != nil {
 		logger.Error(
 			"failed to read file",
 			slog.String("err", err.Error()),
-			slog.String("filepath", filepath),
+			slog.String("filepath", readerCfg.FilePath),
 		)
 		os.Exit(1)
 	}
 
 	logger.Info("successfully read file",
-		"filepath", filepath,
+		"filepath", readerCfg.FilePath,
 		"records", len(incomes))
 
-	if err := p.ExcelReaderRepository.CreateRegionIncomes(ctx, incomes); err != nil {
+	eReaderProcessor := processors.NewExcelReader(repository, logger)
+	if err := eReaderProcessor.ExcelReaderRepository.CreateRegionIncomes(ctx, incomes); err != nil {
 		logger.Error("failed to create region incomes", slog.String("err", err.Error()))
 	}
 

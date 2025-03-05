@@ -14,14 +14,18 @@ type ExcelReaderLogger interface {
 	Info(msg string, args ...any)
 }
 
-type ExcelReader struct {
+type excelReader struct {
 	ExcelReaderRepository ExcelReaderRepository
 	Logger                ExcelReaderLogger
 }
 
-func NewExcelReader(repository ExcelReaderRepository, log ExcelReaderLogger) *ExcelReader {
-	return &ExcelReader{
+func NewExcelReader(repository ExcelReaderRepository, log ExcelReaderLogger) *excelReader {
+	return &excelReader{
 		ExcelReaderRepository: repository,
 		Logger:                log,
 	}
+}
+
+func (er *excelReader) CreateRegionIncomes(ctx context.Context, exRegionIncomes []*domain.ExcelRegionIncome) error {
+	return er.ExcelReaderRepository.CreateRegionIncomes(ctx, exRegionIncomes)
 }
