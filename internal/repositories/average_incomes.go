@@ -2,6 +2,8 @@ package repositories
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -100,32 +102,85 @@ func (r *Repository) getRegionsMap(ctx context.Context, tx *sqlx.Tx) (map[string
 	return regionsMap, nil
 }
 
-func (r *Repository) GetRegionIncomes(ctx context.Context, regionId int32, year int32, quarter int32) (*domain.ExcelRegionIncome, error) {
+func (r *Repository) GetRegionIncomes(ctx context.Context, regionId int32, year int32, quarter int32) (*domain.AverageRegionIncomes, error) {
 
-	var paramYear int32
-	var paramQuarter int32
-	paramYear = year
-	paramQuarter = quarter
-	if paramYear == 0 && paramQuarter == 0 {
-
+	if year == 0 && quarter == 0 {
+		averageRegionIncomes, err := r.getIncomesByRegionID(ctx, regionId)
+		if err != nil {
+			return nil, err
+		}
+		return averageRegionIncomes, nil
 	}
+
+	if quarter == 0 {
+		averageRegionIncomes, err := r.getIncomesByRegionIDAndYear(ctx, regionId, year)
+		if err != nil {
+			return nil, err
+		}
+		return averageRegionIncomes, nil
+	}
+
 	return nil, nil
 }
-func (r *Repository) getRegionIncomeByRegionID(ctx context.Context, regionId int32) (*domain.ExcelRegionIncome, error) {
+func (r *Repository) getIncomesByRegionID(ctx context.Context, regionId int32) (*domain.AverageRegionIncomes, error) {
+	averageRegionIncomes := &domain.AverageRegionIncomes{}
+	query := `SELECT 
+					r.regionname AS Region, 
+					ri.regionid AS RegionId, 
+					EXTRACT(YEAR FROM CURRENT_DATE) AS Year,
+					FLOOR((EXTRACT(MONTH FROM CURRENT_DATE) - 1) / 3) + 1 AS Quarter, 
+					AVG(ri.value) AS AverageRegionIncomes 
+				FROM (
+				    SELECT regionid, value 
+						FROM region_incomes 
+						WHERE regionid = $1 
+						ORDER BY year DESC, quarter DESC 
+						LIMIT 4) AS ri 
+				JOIN regions r ON ri.regionid = r.regionid 
+				GROUP BY r.regionname, ri.regionid`
 
-	//query := `SELECT regionid, year, quarter, value FROM region_incomes
-	//            WHERE regionid = $1 AND id IN
-	//            (SELECT id FROM region_incomes
-	//            WHERE regionid = $1
-	//            ORDER BY id DESC LIMIT 4)
-	//            ORDER BY id ASC`
-	//TODO: доделать запросы
-	//rows, err := r.db.QueryxContext(ctx, query, regionId)
-	//if errors.Is(err, sql.ErrNoRows) {
-	//	return nil, fmt.Errorf("region incomes not found")
-	//}
-	//if err != nil {
-	//	return nil, fmt.Errorf("error executing query: %w", err)
-	//}
-	return nil, nil
+	err := r.db.GetContext(ctx, averageRegionIncomes, query, regionId)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, fmt.Errorf("region not found with region_id [%d]: %w", regionId, err)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("err getting incomes by region_id [%d]: %w", regionId, err)
+	}
+
+	return averageRegionIncomes, nil
+}
+
+func (r *Repository) getIncomesByRegionIDAndYear(ctx context.Context, regionId int32, year int32) (*domain.AverageRegionIncomes, error) {
+	averageRegionIncomes := &domain.AverageRegionIncomes{}
+	query := `SELECT 
+					r.regionname AS Region,
+					ri.regionid AS RegionId,
+					EXTRACT(YEAR FROM CURRENT_DATE) AS Year,
+					FLOOR((EXTRACT(MONTH FROM CURRENT_DATE) - 1) / 3) + 1 AS Quarter,
+					AVG(ri.value) AS AverageRegionIncomes
+				FROM (
+					SELECT regionid, year, quarter, value
+						FROM region_incomes
+						WHERE regionid = $1
+						  AND year = $2
+					UNION ALL
+					SELECT regionid, year, quarter, value
+						FROM region_incomes
+						WHERE regionid = $1
+						  AND year = $2 - 1
+					ORDER BY year DESC, quarter DESC
+					LIMIT 4
+				) AS ri
+				JOIN regions r ON ri.regionid = r.regionid
+				GROUP BY r.regionname, ri.regionid`
+
+	err := r.db.GetContext(ctx, averageRegionIncomes, query, regionId, year)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, fmt.Errorf("region not found with region_id [%d], year [%d]: %w", regionId, year, err)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("err getting incomes by region_id [%d], year [%d]: %w", regionId, year, err)
+	}
+
+	return averageRegionIncomes, nil
 }
