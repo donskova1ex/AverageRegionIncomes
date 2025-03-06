@@ -56,6 +56,7 @@ func (r *Repository) CreateRegionIncomes(ctx context.Context, exRegionIncomes []
         VALUES (:RegionId, :Year, :Quarter, :Value)
         ON CONFLICT (RegionId, Year, Quarter, Value) DO NOTHING`
 
+	//TODO: изоляция транзакций
 	result, err := tx.NamedExec(query, regionIncomes)
 	if err != nil {
 		r.logger.Error("error executing query", slog.String("err", err.Error()))
