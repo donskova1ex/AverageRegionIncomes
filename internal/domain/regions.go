@@ -1,5 +1,6 @@
 package domain
 
+// TODO snake case
 type Regions struct {
 	ID         string `json:"id" db:"id"`
 	RegionId   int32  `json:"RegionId" db:"RegionId"`

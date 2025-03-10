@@ -1,10 +1,12 @@
 package repositories
 
+//TODO: перенести в отдельную папочку config
 import (
 	"fmt"
-	"github.com/joho/godotenv"
 	"os"
 	"time"
+
+	"github.com/joho/godotenv"
 )
 
 type ParserConfig struct {
