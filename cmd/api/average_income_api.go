@@ -12,10 +12,10 @@ package main
 
 import (
 	"context"
+	"github.com/donskova1ex/AverageRegionIncomes/internal/middleware"
 	"github.com/donskova1ex/AverageRegionIncomes/internal/processors"
 	"github.com/donskova1ex/AverageRegionIncomes/internal/repositories"
 	"github.com/jmoiron/sqlx"
-	"log"
 	"log/slog"
 	"net/http"
 	"os"
@@ -61,5 +61,20 @@ func main() {
 
 	router := openapi.NewRouter(GetRegionIncomesAPIController)
 
-	log.Fatal(http.ListenAndServe(":8080", router))
+	requestLogger := middleware.RequestLogger(logger)
+	router.Use(middleware.RequestIDMiddleware, requestLogger)
+
+	httpServer := http.Server{
+		Addr:     ":" + "8080",
+		ErrorLog: slog.NewLogLogger(logJSONHandler, slog.LevelError),
+		Handler:  router,
+	}
+
+	logger.Info("application started", slog.String("port", ":8080"))
+
+	if err := httpServer.ListenAndServe(); err != nil {
+		logger.Error("failed to start server", slog.String("err", err.Error()))
+	}
+
+	//log.Fatal(http.ListenAndServe(":8080", router))
 }
