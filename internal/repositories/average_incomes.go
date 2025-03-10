@@ -131,7 +131,7 @@ func (r *Repository) GetRegionIncomes(ctx context.Context, regionId int32, year 
 func (r *Repository) getIncomesByRegionID(ctx context.Context, regionId int32) (*domain.AverageRegionIncomes, error) {
 	averageRegionIncomes := &domain.AverageRegionIncomes{}
 	query := `SELECT 
-					r.regionname AS Region, 
+					r.regionname AS RegionName, 
 					ri.regionid AS RegionId, 
 					EXTRACT(YEAR FROM CURRENT_DATE) AS Year,
 					FLOOR((EXTRACT(MONTH FROM CURRENT_DATE) - 1) / 3) + 1 AS Quarter, 
@@ -159,7 +159,7 @@ func (r *Repository) getIncomesByRegionID(ctx context.Context, regionId int32) (
 func (r *Repository) getIncomesByRegionIDAndYear(ctx context.Context, regionId int32, year int32) (*domain.AverageRegionIncomes, error) {
 	averageRegionIncomes := &domain.AverageRegionIncomes{}
 	query := `SELECT 
-					r.regionname AS Region,
+					r.regionname AS RegionName,
 					ri.regionid AS RegionId,
 					EXTRACT(YEAR FROM CURRENT_DATE) AS Year,
 					FLOOR((EXTRACT(MONTH FROM CURRENT_DATE) - 1) / 3) + 1 AS Quarter,
