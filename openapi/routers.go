@@ -49,7 +49,8 @@ func NewRouter(routers ...Router) *mux.Router {
 	for _, api := range routers {
 		for name, route := range api.Routes() {
 			var handler http.Handler = route.HandlerFunc
-			handler = Logger(handler, name)
+			//turn off default logger
+			//handler = Logger(handler, name)
 
 			router.
 				Methods(route.Method).
