@@ -1,0 +1,21 @@
+FROM golang:alpine3.19 AS builder
+
+RUN apk update && apk add --no-cache git
+
+WORKDIR /app
+
+COPY *.mod *.sum ./
+RUN go mod download
+
+COPY . .
+RUN rm -f average_income_api
+
+ENV CGO_ENABLED=0
+RUN go build -a -o average_income_api ./cmd/api/average_income_api.go
+
+FROM alpine:latest
+
+RUN apk update && apk add --no-cache bash
+WORKDIR /app
+COPY --from=builder /app/average_income_api /app/average_income_api
+CMD ["./average_income_api"]

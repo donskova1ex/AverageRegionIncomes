@@ -4,10 +4,10 @@ DEV_COMPOSE_ARGS=--env-file .env.dev -f docker-compose.dev.yaml
 DEV_COMPOSE_ENV=docker compose $(DEV_COMPOSE_ARGS)
 DEV_COMPOSE=docker compose $(DEV_COMPOSE_ARGS)
 
-dev-build: dev-reader-build
+dev-build: dev-reader-build dev-api-build
 	$(DEV_COMPOSE) build
 
-dev-up: dev-build dev-reader-up
+dev-up: dev-build dev-reader-up dev-api-up
 	$(DEV_COMPOSE) --env-file .env.dev up -d
 
 dev-migrate-up:
@@ -18,5 +18,10 @@ dev-migrate-down:
 
 dev-reader-build: reader_docker_build
 
+dev-api-build: api_docker_build
+
 dev-reader-up: 
 	$(DEV_COMPOSE) -f docker-compose.dev.yaml up -d reader-up
+
+dev-api-up:
+	$(DEV_COMPOSE) -f docker-compose.dev.yaml up -d api-up

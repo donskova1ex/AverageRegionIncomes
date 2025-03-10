@@ -64,5 +64,22 @@ services:
     working_dir: /app
     depends_on:
       - migrations-up
+  api-up:
+    env_file:
+      - .env.dev
+    environment:
+      - API_CONTAINER_NAME=${API_NAME}
+      - API_PORT=${API_PORT}
+      - POSTGRES_DSN=${POSTGRES_DSN}
+    container_name: average_incomes.api
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    image: donskova1ex/api:latest
+    ports:
+      - 8080:${API_PORT}
+    working_dir: /app
+    depends_on:
+      - migrations-up
 
 
