@@ -12,6 +12,7 @@ package main
 
 import (
 	"context"
+	"github.com/donskova1ex/AverageRegionIncomes/internal"
 	"github.com/donskova1ex/AverageRegionIncomes/internal/middleware"
 	"github.com/donskova1ex/AverageRegionIncomes/internal/processors"
 	"github.com/donskova1ex/AverageRegionIncomes/internal/repositories"
@@ -19,6 +20,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"time"
 
 	openapi "github.com/donskova1ex/AverageRegionIncomes/openapi"
 )
@@ -70,11 +72,50 @@ func main() {
 		Handler:  router,
 	}
 
+	gracefulCloser := internal.NewGracefulCloser()
+	gracefulCloser.Add(func() error {
+		logger.Info("closing db connection")
+		if err := db.Close(); err != nil {
+			logger.Error(
+				"error closing db connection",
+				slog.String("err", err.Error()),
+			)
+			return err
+		}
+		logger.Info("db connection closed successfully")
+		return nil
+	})
+
+	gracefulCloser.Add(func() error {
+		logger.Info("shutting down HTTP server")
+		ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+		defer cancel()
+		if err := httpServer.Shutdown(ctx); err != nil {
+			logger.Error(
+				"error shutting down HTTP server",
+				slog.String("err", err.Error()),
+			)
+			return err
+		}
+		logger.Info("HTTP server shut down successfully")
+		return nil
+	})
+	shutdownCtx, shutdownCancel := context.WithCancel(ctx)
+	defer shutdownCancel()
+	go func() {
+		ctx, cancel := context.WithCancel(shutdownCtx)
+		defer cancel()
+		gracefulCloser.Run(ctx, logger)
+		os.Exit(1)
+	}()
+
 	logger.Info("application started", slog.String("port", ":8080"))
 
-	if err := httpServer.ListenAndServe(); err != nil {
+	if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		logger.Error("failed to start server", slog.String("err", err.Error()))
 	}
+	logger.Info("graceful shutdown complete", slog.String("port", ":8080"))
+
 	//TODO: GracefulCloser
 	//log.Fatal(http.ListenAndServe(":8080", router))
 }
