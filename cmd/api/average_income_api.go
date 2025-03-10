@@ -11,16 +11,52 @@
 package main
 
 import (
+	"context"
+	"github.com/donskova1ex/AverageRegionIncomes/internal/processors"
+	"github.com/donskova1ex/AverageRegionIncomes/internal/repositories"
+	"github.com/jmoiron/sqlx"
 	"log"
+	"log/slog"
 	"net/http"
+	"os"
 
 	openapi "github.com/donskova1ex/AverageRegionIncomes/openapi"
 )
 
 func main() {
-	log.Printf("Server started")
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-	GetRegionIncomesAPIService := openapi.NewGetRegionIncomesAPIService()
+	logJSONHandler := slog.NewJSONHandler(os.Stdout, nil)
+	logger := slog.New(logJSONHandler)
+	slog.SetDefault(logger)
+	logger.Info(
+		"Server started",
+	)
+
+	cfg, err := repositories.DefaultParserConfig("/app/.env.dev")
+	if err != nil {
+		logger.Error("failed to load configuration", slog.String("err", err.Error()))
+		os.Exit(1)
+	}
+	logger.Info("Configuration loaded")
+
+	db, err := repositories.NewPostgresDB(ctx, cfg.PGDSN)
+	if err != nil {
+		logger.Error("error connecting to database", slog.String("err", err.Error()))
+		return
+	}
+	defer func(db *sqlx.DB) {
+		err := db.Close()
+		if err != nil {
+			logger.Error("error closing db", slog.String("err", err.Error()))
+		}
+	}(db)
+
+	repository := repositories.NewRepository(db, logger)
+
+	regionIncomesProcessor := processors.NewAverageIncome(repository, logger)
+	GetRegionIncomesAPIService := openapi.NewGetRegionIncomesAPIService(regionIncomesProcessor, logger)
 	GetRegionIncomesAPIController := openapi.NewGetRegionIncomesAPIController(GetRegionIncomesAPIService)
 
 	router := openapi.NewRouter(GetRegionIncomesAPIController)

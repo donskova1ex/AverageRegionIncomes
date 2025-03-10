@@ -120,7 +120,12 @@ func (r *Repository) GetRegionIncomes(ctx context.Context, regionId int32, year 
 		return averageRegionIncomes, nil
 	}
 
-	return nil, nil
+	averageRegionIncomes, err := r.getRegionIncomesByAllParameters(ctx, regionId, year, quarter)
+	if err != nil {
+		return nil, err
+	}
+
+	return averageRegionIncomes, nil
 }
 func (r *Repository) getIncomesByRegionID(ctx context.Context, regionId int32) (*domain.AverageRegionIncomes, error) {
 	averageRegionIncomes := &domain.AverageRegionIncomes{}
@@ -180,6 +185,51 @@ func (r *Repository) getIncomesByRegionIDAndYear(ctx context.Context, regionId i
 	}
 	if err != nil {
 		return nil, fmt.Errorf("err getting incomes by region_id [%d], year [%d]: %w", regionId, year, err)
+	}
+
+	return averageRegionIncomes, nil
+}
+
+func (r *Repository) getRegionIncomesByAllParameters(ctx context.Context, regionId int32, year int32, quarter int32) (*domain.AverageRegionIncomes, error) {
+	averageRegionIncomes := &domain.AverageRegionIncomes{}
+
+	query := `SELECT 
+					incomes.RegionId,
+					r.regionname AS RegionName,
+					$3 AS Quarter,
+					$2 AS Year,
+					AVG(incomes.value) AS AverageRegionIncomes
+				FROM (
+					SELECT 
+						ri.RegionId, 
+						ri.year, 
+						ri.quarter, 
+						ri.value
+					FROM 
+						region_incomes ri
+					WHERE 
+						ri.RegionId = $1 
+						AND ri.Year <= $2 
+						AND NOT (ri.Year = $2 AND ri.Quarter >= $3) 
+					ORDER BY 
+						ri.Year DESC, 
+						ri.Quarter DESC 
+					LIMIT 4
+				) AS incomes
+				JOIN 
+					regions r 
+				ON 
+					incomes.RegionId = r.RegionId
+				GROUP BY 
+					incomes.RegionId, 
+					r.regionname`
+
+	err := r.db.GetContext(ctx, averageRegionIncomes, query, regionId, year, quarter)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, fmt.Errorf("region not found with region_id [%d], year [%d], quarter [%d]: %w", regionId, year, quarter, err)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("err getting incomes by region_id [%d], year [%d], quarter [%d]: %w", regionId, year, quarter, err)
 	}
 
 	return averageRegionIncomes, nil

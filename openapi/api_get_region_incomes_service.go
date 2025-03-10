@@ -12,34 +12,45 @@ package openapi
 
 import (
 	"context"
-	"errors"
+	"github.com/donskova1ex/AverageRegionIncomes/internal/domain"
+	"log/slog"
 	"net/http"
 )
-
+type AverageRegionIncomeProcessor interface {
+	GetRegionIncomes(ctx context.Context, regionId int32, year int32, quarter int32) (*domain.AverageRegionIncomes, error)
+}
 // GetRegionIncomesAPIService is a service that implements the logic for the GetRegionIncomesAPIServicer
 // This service should implement the business logic for every endpoint for the GetRegionIncomesAPI API.
 // Include any external packages or services that will be required by this service.
 type GetRegionIncomesAPIService struct {
+	regionIncomesProcessor AverageRegionIncomeProcessor
+	log *slog.Logger
 }
 
 // NewGetRegionIncomesAPIService creates a default api service
-func NewGetRegionIncomesAPIService() *GetRegionIncomesAPIService {
-	return &GetRegionIncomesAPIService{}
+func NewGetRegionIncomesAPIService(averageRegionIncomeProcessor AverageRegionIncomeProcessor, log *slog.Logger ) *GetRegionIncomesAPIService {
+	return &GetRegionIncomesAPIService{
+		regionIncomesProcessor: averageRegionIncomeProcessor,
+		log: log,
+	}
 }
 
 // GetRegionIncomes - Get average region incomes
 func (s *GetRegionIncomesAPIService) GetRegionIncomes(ctx context.Context, regionid int32, year int32, quarter int32) (ImplResponse, error) {
-	// TODO - update GetRegionIncomes with the required logic for this service method.
-	// Add api_get_region_incomes_service.go to the .openapi-generator-ignore to avoid overwriting this service implementation when updating open api generation.
+	ri, err := s.regionIncomesProcessor.GetRegionIncomes(ctx, regionid, year, quarter)
+	if err != nil {
+		return Response(http.StatusInternalServerError, nil), err
+	}
+	openApiRegionIncomes := domainRegionIncomesToOpenApi(ri)
+	return Response(http.StatusOK, openApiRegionIncomes), nil
+}
 
-	// TODO: Uncomment the next line to return response Response(200, []Averageregionincomes{}) or use other options such as http.Ok ...
-	// return Response(200, []Averageregionincomes{}), nil
-
-	// TODO: Uncomment the next line to return response Response(400, {}) or use other options such as http.Ok ...
-	// return Response(400, nil),nil
-
-	// TODO: Uncomment the next line to return response Response(404, {}) or use other options such as http.Ok ...
-	// return Response(404, nil),nil
-
-	return Response(http.StatusNotImplemented, nil), errors.New("GetRegionIncomes method not implemented")
+func domainRegionIncomesToOpenApi(domainRegionIncomes *domain.AverageRegionIncomes) Averageregionincomes  {
+	return Averageregionincomes{
+		RegionId: domainRegionIncomes.RegionId,
+		Year: domainRegionIncomes.Year,
+		Quarter: domainRegionIncomes.Quarter,
+		RegionName: domainRegionIncomes.RegionName,
+		AverageRegionIncomes: domainRegionIncomes.AverageRegionIncomes,
+	}
 }
