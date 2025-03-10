@@ -4,6 +4,7 @@ package repositories
 import (
 	"fmt"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/joho/godotenv"
@@ -51,10 +52,30 @@ func DefaultParserConfig(envPath string) (*ParserConfig, error) {
 		return nil, fmt.Errorf("DEFAULT_FILE_PATH environment variable not set")
 	}
 
+	parsingInterval := os.Getenv("PARSING_INTERVAL")
+	var parsedInterval time.Duration
+	if parsingInterval == "" {
+		parsedInterval = 5 * time.Hour
+	}
+	parsedInterval, err = time.ParseDuration(parsingInterval)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing PARSING_INTERVAL: %w", err)
+	}
+
+	maxRetriesStr := os.Getenv("MAX_RETRIES")
+	var maxRetries int
+	if maxRetriesStr == "" {
+		maxRetries = 3
+	}
+	maxRetries, err = strconv.Atoi(maxRetriesStr)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing MAX_RETRIES: %w", err)
+	}
+
 	return &ParserConfig{
 		FilePath:        defaultFilePath,
-		ParsingInterval: 5 * time.Hour,
-		MaxRetries:      3,
+		ParsingInterval: parsedInterval,
+		MaxRetries:      maxRetries,
 		RetryDelay:      time.Second,
 		PGDSN:           pgDSN,
 	}, nil

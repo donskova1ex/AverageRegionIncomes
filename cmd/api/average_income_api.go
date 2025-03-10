@@ -75,6 +75,6 @@ func main() {
 	if err := httpServer.ListenAndServe(); err != nil {
 		logger.Error("failed to start server", slog.String("err", err.Error()))
 	}
-
+	//TODO: GracefulCloser
 	//log.Fatal(http.ListenAndServe(":8080", router))
 }
