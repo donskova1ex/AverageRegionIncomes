@@ -53,7 +53,7 @@ func main() {
 	ticker := time.NewTicker(cfg.ParsingInterval)
 	defer ticker.Stop()
 
-	logger.Info("Parser is running in the background")
+	logger.Info("Parser is running in the backgroun")
 
 	for {
 		select {
