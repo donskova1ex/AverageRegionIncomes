@@ -41,6 +41,7 @@ func main() {
 		if err != nil {
 			logger.Error("error closing db", slog.String("err", err.Error()))
 		}
+		logger.Info("db closed")
 	}(db)
 
 	repository := repositories.NewRepository(db, logger)
@@ -61,7 +62,7 @@ func main() {
 			logger.Info("Parser started")
 			processExcelFile(ctx, repository, logger, cfg)
 		case <-stop:
-			logger.Info("shutting down server")
+			logger.Info("shutting down parser")
 			return
 		}
 	}
