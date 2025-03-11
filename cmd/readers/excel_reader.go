@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"github.com/donskova1ex/AverageRegionIncomes/internal"
 	"github.com/donskova1ex/AverageRegionIncomes/internal/processors"
 	"github.com/jmoiron/sqlx"
 	"log/slog"
@@ -46,28 +47,46 @@ func main() {
 
 	repository := repositories.NewRepository(db, logger)
 
-	processExcelFile(ctx, repository, logger, cfg)
+	gracefulCloser := internal.NewGracefulCloser()
+	gracefulCloser.Add(func() error {
+		logger.Info("closing db connection")
+		if err := db.Close(); err != nil {
+			logger.Error("error closing db connection", slog.String("err", err.Error()))
+			return err
+		}
+		logger.Info("db closed")
+		return nil
+	})
 
-	stop := make(chan os.Signal, 1)
-	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
+	signalCtx, signalCancel := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
+	defer signalCancel()
+
+	processExcelFile(ctx, repository, logger, cfg)
 
 	ticker := time.NewTicker(cfg.ParsingInterval)
 	defer ticker.Stop()
 
 	logger.Info("Parser is running in the background")
 
+	go func() {
+		<-signalCtx.Done()
+		logger.Info("interrupt signal received")
+		cancel()
+
+		gracefulCloser.Run(signalCtx, logger)
+		logger.Info("graceful shutdown complete")
+	}()
+
 	for {
 		select {
 		case <-ticker.C:
 			logger.Info("Parser started")
 			processExcelFile(ctx, repository, logger, cfg)
-		case <-stop:
+		case <-ctx.Done():
 			logger.Info("shutting down parser")
 			return
 		}
 	}
-
-	//TODO: GracefulCloser
 
 }
 
@@ -99,5 +118,5 @@ func processExcelFile(
 		logger.Error("failed to create region incomes", slog.String("err", err.Error()))
 	}
 
-	logger.Info("successfully saved records to database", "count", len(incomes))
+	logger.Info("successfully saved records to database", "strings read", len(incomes))
 }

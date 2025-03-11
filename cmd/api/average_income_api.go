@@ -116,6 +116,4 @@ func main() {
 	}
 	logger.Info("graceful shutdown complete", slog.String("port", ":8080"))
 
-	//TODO: GracefulCloser
-	//log.Fatal(http.ListenAndServe(":8080", router))
 }
