@@ -15,6 +15,8 @@ func RequestLogger(logger *slog.Logger) func(http.Handler) http.Handler {
 			rw := NewCommonResponseWriter(w)
 			next.ServeHTTP(rw, r)
 
+			durationMs := time.Since(start).Milliseconds()
+
 			log := logger.With(
 				slog.String("method", r.Method),
 				slog.String("path", r.URL.Path),
@@ -31,7 +33,7 @@ func RequestLogger(logger *slog.Logger) func(http.Handler) http.Handler {
 			log = log.With(
 				slog.Int64("status", int64(rw.statusCode)),
 				slog.String("request_id", string(requestID)),
-				slog.Float64("duration_ms", time.Since(start).Seconds()*1000),
+				slog.Int64("duration_ms", durationMs),
 			)
 
 			log.Info("http request")
