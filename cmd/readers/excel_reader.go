@@ -54,7 +54,7 @@ func main() {
 			logger.Error("error closing db connection", slog.String("err", err.Error()))
 			return err
 		}
-		logger.Info("db closed")
+		logger.Info("db connection closed")
 		return nil
 	})
 
