@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"github.com/donskova1ex/AverageRegionIncomes/internal/config"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -26,7 +27,7 @@ func main() {
 		"Server started",
 	)
 
-	cfg, err := repositories.DefaultParserConfig("/app/config/.env.dev")
+	cfg, err := config.DefaultParserConfig("/app/config/.env.dev")
 	if err != nil {
 		logger.Error("failed to load configuration", slog.String("err", err.Error()))
 		os.Exit(1)
@@ -95,7 +96,7 @@ func processExcelFile(
 	ctx context.Context,
 	repository *repositories.Repository,
 	logger *slog.Logger,
-	readerCfg *repositories.ParserConfig,
+	readerCfg *config.ParserConfig,
 ) {
 
 	reader := repositories.NewExcelReader(logger, readerCfg.MaxRetries, readerCfg.RetryDelay)

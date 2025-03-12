@@ -13,6 +13,7 @@ package main
 import (
 	"context"
 	"github.com/donskova1ex/AverageRegionIncomes/internal"
+	"github.com/donskova1ex/AverageRegionIncomes/internal/config"
 	"github.com/donskova1ex/AverageRegionIncomes/internal/middleware"
 	"github.com/donskova1ex/AverageRegionIncomes/internal/processors"
 	"github.com/donskova1ex/AverageRegionIncomes/internal/repositories"
@@ -36,7 +37,7 @@ func main() {
 		"Server started",
 	)
 
-	cfg, err := repositories.DefaultParserConfig("/app/config/.env.dev")
+	cfg, err := config.DefaultParserConfig("/app/config/.env.dev")
 	if err != nil {
 		logger.Error("failed to load configuration", slog.String("err", err.Error()))
 		os.Exit(1)
