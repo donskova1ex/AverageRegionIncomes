@@ -52,9 +52,9 @@ func (r *Repository) CreateRegionIncomes(ctx context.Context, exRegionIncomes []
 	}
 
 	query := `
-        INSERT INTO region_incomes (RegionId, Year, Quarter, Value) 
-        VALUES (:RegionId, :Year, :Quarter, :Value)
-        ON CONFLICT (RegionId, Year, Quarter, Value) DO NOTHING`
+        INSERT INTO region_incomes (region_id, year, quarter, value) 
+        VALUES (:region_id, :year, :quarter, :value)
+        ON CONFLICT (region_id, year, quarter, value) DO NOTHING`
 
 	//TODO: изоляция транзакций
 	result, err := tx.NamedExec(query, regionIncomes)
@@ -75,7 +75,7 @@ func (r *Repository) CreateRegionIncomes(ctx context.Context, exRegionIncomes []
 }
 
 func (r *Repository) getRegionsMap(ctx context.Context, tx *sqlx.Tx) (map[string]int32, error) {
-	query := `SELECT regionid, regionname FROM regions`
+	query := `SELECT region_id, region_name FROM regions`
 
 	rows, err := tx.QueryxContext(ctx, query)
 	if err != nil {
@@ -131,19 +131,19 @@ func (r *Repository) GetRegionIncomes(ctx context.Context, regionId int32, year 
 func (r *Repository) getIncomesByRegionID(ctx context.Context, regionId int32) (*domain.AverageRegionIncomes, error) {
 	averageRegionIncomes := &domain.AverageRegionIncomes{}
 	query := `SELECT 
-					r.regionname AS RegionName, 
-					ri.regionid AS RegionId, 
+					r.region_name AS RegionName, 
+					ri.region_id AS RegionId, 
 					EXTRACT(YEAR FROM CURRENT_DATE) AS Year,
 					FLOOR((EXTRACT(MONTH FROM CURRENT_DATE) - 1) / 3) + 1 AS Quarter, 
 					AVG(ri.value) AS AverageRegionIncomes 
 				FROM (
-				    SELECT regionid, value 
+				    SELECT region_id, value 
 						FROM region_incomes 
-						WHERE regionid = $1 
+						WHERE region_id = $1 
 						ORDER BY year DESC, quarter DESC 
 						LIMIT 4) AS ri 
-				JOIN regions r ON ri.regionid = r.regionid 
-				GROUP BY r.regionname, ri.regionid`
+				JOIN regions r ON ri.region_id = r.region_id 
+				GROUP BY r.region_name, ri.region_id`
 
 	err := r.db.GetContext(ctx, averageRegionIncomes, query, regionId)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -159,26 +159,26 @@ func (r *Repository) getIncomesByRegionID(ctx context.Context, regionId int32) (
 func (r *Repository) getIncomesByRegionIDAndYear(ctx context.Context, regionId int32, year int32) (*domain.AverageRegionIncomes, error) {
 	averageRegionIncomes := &domain.AverageRegionIncomes{}
 	query := `SELECT 
-					r.regionname AS RegionName,
-					ri.regionid AS RegionId,
+					r.region_name AS RegionName,
+					ri.region_id AS RegionId,
 					EXTRACT(YEAR FROM CURRENT_DATE) AS Year,
 					FLOOR((EXTRACT(MONTH FROM CURRENT_DATE) - 1) / 3) + 1 AS Quarter,
 					AVG(ri.value) AS AverageRegionIncomes
 				FROM (
-					SELECT regionid, year, quarter, value
+					SELECT region_id, year, quarter, value
 						FROM region_incomes
-						WHERE regionid = $1
+						WHERE region_id = $1
 						  AND year = $2
 					UNION ALL
-					SELECT regionid, year, quarter, value
+					SELECT region_id, year, quarter, value
 						FROM region_incomes
-						WHERE regionid = $1
+						WHERE region_id = $1
 						  AND year = $2 - 1
 					ORDER BY year DESC, quarter DESC
 					LIMIT 4
 				) AS ri
-				JOIN regions r ON ri.regionid = r.regionid
-				GROUP BY r.regionname, ri.regionid`
+				JOIN regions r ON ri.region_id = r.region_id
+				GROUP BY r.region_name, ri.region_id`
 
 	err := r.db.GetContext(ctx, averageRegionIncomes, query, regionId, year)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -195,35 +195,35 @@ func (r *Repository) getRegionIncomesByAllParameters(ctx context.Context, region
 	averageRegionIncomes := &domain.AverageRegionIncomes{}
 
 	query := `SELECT 
-					incomes.RegionId,
-					r.regionname AS RegionName,
-					$3 AS Quarter,
-					$2 AS Year,
-					AVG(incomes.value) AS AverageRegionIncomes
+					incomes.region_id,
+					r.region_name AS region_name,
+					$3 AS quarter,
+					$2 AS year,
+					AVG(incomes.value) AS average_region_incomes
 				FROM (
 					SELECT 
-						ri.RegionId, 
+						ri.region_id, 
 						ri.year, 
 						ri.quarter, 
 						ri.value
 					FROM 
 						region_incomes ri
 					WHERE 
-						ri.RegionId = $1 
-						AND ri.Year <= $2 
-						AND NOT (ri.Year = $2 AND ri.Quarter >= $3) 
+						ri.region_id = $1 
+						AND ri.year <= $2 
+						AND NOT (ri.year = $2 AND ri.quarter >= $3) 
 					ORDER BY 
-						ri.Year DESC, 
-						ri.Quarter DESC 
+						ri.year DESC, 
+						ri.quarter DESC 
 					LIMIT 4
 				) AS incomes
 				JOIN 
 					regions r 
 				ON 
-					incomes.RegionId = r.RegionId
+					incomes.region_id = r.region_id
 				GROUP BY 
-					incomes.RegionId, 
-					r.regionname`
+					incomes.region_id, 
+					r.region_name`
 
 	err := r.db.GetContext(ctx, averageRegionIncomes, query, regionId, year, quarter)
 	if errors.Is(err, sql.ErrNoRows) {

@@ -2,14 +2,14 @@
 -- +goose StatementBegin
 CREATE TABLE IF NOT EXISTS regions (
     id SERIAL PRIMARY KEY,
-    RegionId INTEGER,
-    RegionName VARCHAR(64),
-    UNIQUE (RegionId),
-    UNIQUE (RegionName)
+    region_id INTEGER,
+    region_name VARCHAR(64),
+    UNIQUE (region_id),
+    UNIQUE (region_name)
     );
 
 -- Вставка данных в таблицу regions
-INSERT INTO regions (RegionId, RegionName) VALUES
+INSERT INTO regions (region_id, region_name) VALUES
 (1, 'Республика Адыгея'),
 (2, 'Республика Башкортостан'),
 (3, 'Республика Бурятия'),
