@@ -2,14 +2,15 @@ package main
 
 import (
 	"context"
-	"github.com/donskova1ex/AverageRegionIncomes/internal"
-	"github.com/donskova1ex/AverageRegionIncomes/internal/processors"
-	"github.com/jmoiron/sqlx"
 	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
+
+	"github.com/donskova1ex/AverageRegionIncomes/internal"
+	"github.com/donskova1ex/AverageRegionIncomes/internal/processors"
+	"github.com/jmoiron/sqlx"
 
 	"github.com/donskova1ex/AverageRegionIncomes/internal/repositories"
 )
@@ -25,7 +26,7 @@ func main() {
 		"Server started",
 	)
 
-	cfg, err := repositories.DefaultParserConfig("/app/.env.dev")
+	cfg, err := repositories.DefaultParserConfig("/app/config/.env.dev")
 	if err != nil {
 		logger.Error("failed to load configuration", slog.String("err", err.Error()))
 		os.Exit(1)

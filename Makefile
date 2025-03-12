@@ -1,6 +1,6 @@
 include scripts/*.mk
 
-DEV_COMPOSE_ARGS=--env-file .env.dev -f docker-compose.dev.yaml
+DEV_COMPOSE_ARGS=--env-file config/.env.dev -f docker-compose.dev.yaml
 DEV_COMPOSE_ENV=docker compose $(DEV_COMPOSE_ARGS)
 DEV_COMPOSE=docker compose $(DEV_COMPOSE_ARGS)
 
@@ -8,7 +8,7 @@ dev-build: dev-reader-build dev-api-build
 	$(DEV_COMPOSE) build
 
 dev-up: dev-build dev-reader-up dev-api-up
-	$(DEV_COMPOSE) --env-file .env.dev up -d
+	$(DEV_COMPOSE) --env-file config/.env.dev up -d
 
 dev-migrate-up:
 	docker-compose -f docker-compose.dev.yaml up -d migrations-up

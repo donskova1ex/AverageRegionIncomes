@@ -36,7 +36,7 @@ func main() {
 		"Server started",
 	)
 
-	cfg, err := repositories.DefaultParserConfig("/app/.env.dev")
+	cfg, err := repositories.DefaultParserConfig("/app/config/.env.dev")
 	if err != nil {
 		logger.Error("failed to load configuration", slog.String("err", err.Error()))
 		os.Exit(1)
