@@ -15,7 +15,11 @@ import (
 func (r *Repository) CreateRegionIncomes(ctx context.Context, exRegionIncomes []*domain.ExcelRegionIncome) error {
 	var txCommited bool
 
-	tx, err := r.db.BeginTxx(ctx, nil)
+	serializableIsolation := &sql.TxOptions{
+		Isolation: sql.LevelSerializable,
+		ReadOnly:  false,
+	}
+	tx, err := r.db.BeginTxx(ctx, serializableIsolation)
 	if err != nil {
 		return fmt.Errorf("error starting transaction: %w", err)
 	}
@@ -56,7 +60,6 @@ func (r *Repository) CreateRegionIncomes(ctx context.Context, exRegionIncomes []
         VALUES (:region_id, :year, :quarter, :value)
         ON CONFLICT (region_id, year, quarter, value) DO NOTHING`
 
-	//TODO: изоляция транзакций
 	result, err := tx.NamedExec(query, regionIncomes)
 	if err != nil {
 		r.logger.Error("error executing query", slog.String("err", err.Error()))
@@ -104,31 +107,49 @@ func (r *Repository) getRegionsMap(ctx context.Context, tx *sqlx.Tx) (map[string
 }
 
 func (r *Repository) GetRegionIncomes(ctx context.Context, regionId int32, year int32, quarter int32) (*domain.AverageRegionIncomes, error) {
+	var txCommited bool
+
+	readOnlyTx := &sql.TxOptions{
+		Isolation: sql.LevelRepeatableRead,
+		ReadOnly:  true,
+	}
+
+	tx, err := r.db.BeginTxx(ctx, readOnlyTx)
+	if err != nil {
+		return nil, fmt.Errorf("error starting transaction: %w", err)
+	}
+
+	defer func() {
+		if !txCommited {
+			if rollbackErr := tx.Rollback(); rollbackErr != nil {
+				r.logger.Error("error rolling back transaction", slog.String("err", rollbackErr.Error()))
+			}
+		}
+	}()
+
+	var result *domain.AverageRegionIncomes
+	var queryErr error
 
 	if year == 0 && quarter == 0 {
-		averageRegionIncomes, err := r.getIncomesByRegionID(ctx, regionId)
-		if err != nil {
-			return nil, err
-		}
-		return averageRegionIncomes, nil
+		result, queryErr = r.getIncomesByRegionID(ctx, tx, regionId)
+	} else if quarter == 0 {
+		result, queryErr = r.getIncomesByRegionIDAndYear(ctx, tx, regionId, year)
+	} else {
+		result, queryErr = r.getRegionIncomesByAllParameters(ctx, tx, regionId, year, quarter)
 	}
 
-	if quarter == 0 {
-		averageRegionIncomes, err := r.getIncomesByRegionIDAndYear(ctx, regionId, year)
-		if err != nil {
-			return nil, err
-		}
-		return averageRegionIncomes, nil
+	if queryErr != nil {
+		return nil, queryErr
 	}
 
-	averageRegionIncomes, err := r.getRegionIncomesByAllParameters(ctx, regionId, year, quarter)
-	if err != nil {
-		return nil, err
+	if err := tx.Commit(); err != nil {
+		return nil, fmt.Errorf("error committing transaction: %w", err)
 	}
-
-	return averageRegionIncomes, nil
+	txCommited = true
+	return result, nil
 }
-func (r *Repository) getIncomesByRegionID(ctx context.Context, regionId int32) (*domain.AverageRegionIncomes, error) {
+
+func (r *Repository) getIncomesByRegionID(ctx context.Context, tx *sqlx.Tx, regionId int32) (*domain.AverageRegionIncomes, error) {
 	averageRegionIncomes := &domain.AverageRegionIncomes{}
 	query := `SELECT 
 					r.region_name AS RegionName, 
@@ -145,7 +166,7 @@ func (r *Repository) getIncomesByRegionID(ctx context.Context, regionId int32) (
 				JOIN regions r ON ri.region_id = r.region_id 
 				GROUP BY r.region_name, ri.region_id`
 
-	err := r.db.GetContext(ctx, averageRegionIncomes, query, regionId)
+	err := tx.GetContext(ctx, averageRegionIncomes, query, regionId)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, fmt.Errorf("region not found with region_id [%d]: %w", regionId, err)
 	}
@@ -156,7 +177,7 @@ func (r *Repository) getIncomesByRegionID(ctx context.Context, regionId int32) (
 	return averageRegionIncomes, nil
 }
 
-func (r *Repository) getIncomesByRegionIDAndYear(ctx context.Context, regionId int32, year int32) (*domain.AverageRegionIncomes, error) {
+func (r *Repository) getIncomesByRegionIDAndYear(ctx context.Context, tx *sqlx.Tx, regionId int32, year int32) (*domain.AverageRegionIncomes, error) {
 	averageRegionIncomes := &domain.AverageRegionIncomes{}
 	query := `SELECT 
 					r.region_name AS RegionName,
@@ -180,7 +201,7 @@ func (r *Repository) getIncomesByRegionIDAndYear(ctx context.Context, regionId i
 				JOIN regions r ON ri.region_id = r.region_id
 				GROUP BY r.region_name, ri.region_id`
 
-	err := r.db.GetContext(ctx, averageRegionIncomes, query, regionId, year)
+	err := tx.GetContext(ctx, averageRegionIncomes, query, regionId, year)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, fmt.Errorf("region not found with region_id [%d], year [%d]: %w", regionId, year, err)
 	}
@@ -191,7 +212,7 @@ func (r *Repository) getIncomesByRegionIDAndYear(ctx context.Context, regionId i
 	return averageRegionIncomes, nil
 }
 
-func (r *Repository) getRegionIncomesByAllParameters(ctx context.Context, regionId int32, year int32, quarter int32) (*domain.AverageRegionIncomes, error) {
+func (r *Repository) getRegionIncomesByAllParameters(ctx context.Context, tx *sqlx.Tx, regionId int32, year int32, quarter int32) (*domain.AverageRegionIncomes, error) {
 	averageRegionIncomes := &domain.AverageRegionIncomes{}
 
 	query := `SELECT 
@@ -225,7 +246,7 @@ func (r *Repository) getRegionIncomesByAllParameters(ctx context.Context, region
 					incomes.region_id, 
 					r.region_name`
 
-	err := r.db.GetContext(ctx, averageRegionIncomes, query, regionId, year, quarter)
+	err := tx.GetContext(ctx, averageRegionIncomes, query, regionId, year, quarter)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, fmt.Errorf("region not found with region_id [%d], year [%d], quarter [%d]: %w", regionId, year, quarter, err)
 	}
