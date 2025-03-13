@@ -14,7 +14,7 @@ import (
 
 func (r *Repository) CreateRegionIncomes(ctx context.Context, exRegionIncomes []*domain.ExcelRegionIncome) error {
 	var txCommited bool
-
+	//TODO: serializable выставить на всю таблицу, а все остальное ReadCommited, на уровне БД
 	serializableIsolation := &sql.TxOptions{
 		Isolation: sql.LevelSerializable,
 		ReadOnly:  false,
