@@ -58,10 +58,6 @@ docker-compose -f docker-compose.dev.yaml --profile migrations-down up migration
 - API_* - настройки API сервера
 - READER_* - настройки сервиса чтения данных
 
-## Makefile
-
-Проект включает Makefile для автоматизации основных задач разработки.
-
 ## Документация API
 
 API документация доступна в формате OpenAPI в директории `openapi/`.
