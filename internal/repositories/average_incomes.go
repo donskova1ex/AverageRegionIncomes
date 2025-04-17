@@ -152,11 +152,11 @@ func (r *Repository) GetRegionIncomes(ctx context.Context, regionId int32, year 
 func (r *Repository) getIncomesByRegionID(ctx context.Context, tx *sqlx.Tx, regionId int32) (*domain.AverageRegionIncomes, error) {
 	averageRegionIncomes := &domain.AverageRegionIncomes{}
 	query := `SELECT 
-					r.region_name AS RegionName, 
-					ri.region_id AS RegionId, 
+					r.region_name AS Region_Name, 
+					ri.region_id AS Region_Id, 
 					EXTRACT(YEAR FROM CURRENT_DATE) AS Year,
 					FLOOR((EXTRACT(MONTH FROM CURRENT_DATE) - 1) / 3) + 1 AS Quarter, 
-					AVG(ri.value) AS AverageRegionIncomes 
+					AVG(ri.value) AS Average_Region_Incomes 
 				FROM (
 				    SELECT region_id, value 
 						FROM region_incomes 
@@ -180,11 +180,11 @@ func (r *Repository) getIncomesByRegionID(ctx context.Context, tx *sqlx.Tx, regi
 func (r *Repository) getIncomesByRegionIDAndYear(ctx context.Context, tx *sqlx.Tx, regionId int32, year int32) (*domain.AverageRegionIncomes, error) {
 	averageRegionIncomes := &domain.AverageRegionIncomes{}
 	query := `SELECT 
-					r.region_name AS RegionName,
-					ri.region_id AS RegionId,
+					r.region_name AS Region_Name,
+					ri.region_id AS Region_Id,
 					EXTRACT(YEAR FROM CURRENT_DATE) AS Year,
 					FLOOR((EXTRACT(MONTH FROM CURRENT_DATE) - 1) / 3) + 1 AS Quarter,
-					AVG(ri.value) AS AverageRegionIncomes
+					AVG(ri.value) AS Average_Region_Incomes
 				FROM (
 					SELECT region_id, year, quarter, value
 						FROM region_incomes
