@@ -25,3 +25,6 @@ dev-reader-up:
 
 dev-api-up:
 	$(DEV_COMPOSE) -f docker-compose.dev.yaml up -d api-up
+
+redis-connect:
+	docker exec -it average_incomes.redis redis-cli -p 6379
