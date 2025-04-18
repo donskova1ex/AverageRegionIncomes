@@ -2,7 +2,9 @@ package processors
 
 import (
 	"context"
+	"fmt"
 	"github.com/donskova1ex/AverageRegionIncomes/internal/domain"
+	"log/slog"
 )
 
 // TODO:Tests
@@ -31,5 +33,10 @@ func NewExcelReader(repository ExcelReaderRepository, log ExcelReaderLogger) *ex
 }
 
 func (er *excelReader) CreateRegionIncomes(ctx context.Context, exRegionIncomes []*domain.ExcelRegionIncome) error {
-	return er.ExcelReaderRepository.CreateRegionIncomes(ctx, exRegionIncomes)
+	err := er.ExcelReaderRepository.CreateRegionIncomes(ctx, exRegionIncomes)
+	if err != nil {
+		er.Logger.Error("error creating region incomes", slog.String("error", err.Error()))
+		return fmt.Errorf("error creating region incomes: %w", err)
+	}
+	return nil
 }
