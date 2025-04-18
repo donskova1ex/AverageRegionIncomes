@@ -42,12 +42,12 @@ func newRedisOptions() (*RedisOptions, error) {
 		return nil, fmt.Errorf("REDIS_PORT environment variable not set")
 	}
 
-	password := os.Getenv("REDIS_PASSWORD")
+	password := os.Getenv("REDIS_USER_PASSWORD")
 	if password == "" {
 		return nil, fmt.Errorf("REDIS_PASSWORD environment variable not set")
 	}
 
-	username := os.Getenv("REDIS_USERNAME")
+	username := os.Getenv("REDIS_USER")
 	if username == "" {
 		return nil, fmt.Errorf("REDIS_USERNAME environment variable not set")
 	}
