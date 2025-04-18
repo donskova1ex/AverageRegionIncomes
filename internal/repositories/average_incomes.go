@@ -6,10 +6,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/donskova1ex/AverageRegionIncomes/internal/domain"
-	"github.com/jmoiron/sqlx"
 	"log/slog"
 	"strings"
+
+	"github.com/donskova1ex/AverageRegionIncomes/internal/domain"
+	"github.com/jmoiron/sqlx"
 )
 
 func (r *SQLRepository) CreateRegionIncomes(ctx context.Context, exRegionIncomes []*domain.ExcelRegionIncome) error {
@@ -273,7 +274,7 @@ func (r *RedisRepository) GetCachedRegionIncomes(ctx context.Context, regionId i
 	if err != nil {
 		return nil, fmt.Errorf("error unmarshalling cached region incomes: %w", err)
 	}
-
+	r.logger.Info("get cached region incomes", slog.String("region_id", fmt.Sprintf("%d", regionId)), slog.String("year", fmt.Sprintf("%d", year)), slog.String("quarter", fmt.Sprintf("%d", quarter)))
 	return averageRegionIncomes, nil
 }
 
@@ -295,6 +296,7 @@ func (r *RedisRepository) SetCachedRegionIncomes(
 	if err != nil {
 		return fmt.Errorf("error setting cached region incomes: %w", err)
 	}
+	r.logger.Info("set cached region incomes", slog.String("region_id", fmt.Sprintf("%d", regionId)), slog.String("year", fmt.Sprintf("%d", year)), slog.String("quarter", fmt.Sprintf("%d", quarter)))
 	return nil
 }
 
