@@ -3,13 +3,18 @@ package processors
 import (
 	"context"
 	"fmt"
-	"github.com/donskova1ex/AverageRegionIncomes/internal/domain"
 	"log/slog"
+
+	"github.com/donskova1ex/AverageRegionIncomes/internal/domain"
 )
 
 //go:generate mockgen -destination=./mocks/average_income_repository.go -package=mocks -mock_names=AverageIncomeRepository=AverageIncomeRepository . AverageIncomeRepository
-type AverageIncomeRepository interface {
+type AverageIncomeDBRepository interface {
 	GetRegionIncomes(ctx context.Context, regionId int32, year int32, quarter int32) (*domain.AverageRegionIncomes, error)
+}
+
+type AverageIncomeRedisRepository interface {
+	GetCachedRegionIncomes(ctx context.Context, regionId int32, year int32, quarter int32) (*domain.AverageRegionIncomes, error)
 }
 
 //go:generate mockgen -destination=./mocks/average_income_logger.go -package=mocks -mock_names=AverageIncomeLogger=AverageIncomeLogger . AverageIncomeLogger
@@ -19,15 +24,17 @@ type AverageIncomeLogger interface {
 }
 
 type averageIncome struct {
-	averageIncomeRepository AverageIncomeRepository
-	log                     AverageIncomeLogger
+	averageIncomeRepository      AverageIncomeDBRepository
+	averageIncomeRedisRepository AverageIncomeRedisRepository
+	log                          AverageIncomeLogger
 }
 
-func NewAverageIncome(averageIncomeRepository AverageIncomeRepository, log AverageIncomeLogger) *averageIncome {
-	return &averageIncome{averageIncomeRepository, log}
+func NewAverageIncome(averageIncomeRepository AverageIncomeDBRepository, averageIncomeRedisRepository AverageIncomeRedisRepository, log AverageIncomeLogger) *averageIncome {
+	return &averageIncome{averageIncomeRepository, averageIncomeRedisRepository, log}
 }
 
 func (a *averageIncome) GetRegionIncomes(ctx context.Context, regionId int32, year int32, quarter int32) (*domain.AverageRegionIncomes, error) {
+
 	regionIncomes, err := a.averageIncomeRepository.GetRegionIncomes(ctx, regionId, year, quarter)
 	if err != nil {
 		a.log.Error("it is impossible to get a region incomes", slog.String("err", err.Error()))

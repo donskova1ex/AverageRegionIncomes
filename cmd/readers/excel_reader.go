@@ -2,12 +2,13 @@ package main
 
 import (
 	"context"
-	"github.com/donskova1ex/AverageRegionIncomes/internal/config"
 	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
+
+	"github.com/donskova1ex/AverageRegionIncomes/internal/config"
 
 	"github.com/donskova1ex/AverageRegionIncomes/internal"
 	"github.com/donskova1ex/AverageRegionIncomes/internal/processors"
@@ -47,7 +48,7 @@ func main() {
 		logger.Info("db closed")
 	}(db)
 
-	repository := repositories.NewRepository(db, logger)
+	repository := repositories.NewSQLRepository(db, logger)
 
 	gracefulCloser := internal.NewGracefulCloser()
 	gracefulCloser.Add(func() error {
@@ -94,7 +95,7 @@ func main() {
 
 func processExcelFile(
 	ctx context.Context,
-	repository *repositories.Repository,
+	repository *repositories.SQLRepository,
 	logger *slog.Logger,
 	readerCfg *config.ParserConfig,
 ) {

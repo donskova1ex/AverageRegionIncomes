@@ -3,16 +3,16 @@ package repositories
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
-	"log/slog"
-	"strings"
-
 	"github.com/donskova1ex/AverageRegionIncomes/internal/domain"
 	"github.com/jmoiron/sqlx"
+	"log/slog"
+	"strings"
 )
 
-func (r *Repository) CreateRegionIncomes(ctx context.Context, exRegionIncomes []*domain.ExcelRegionIncome) error {
+func (r *SQLRepository) CreateRegionIncomes(ctx context.Context, exRegionIncomes []*domain.ExcelRegionIncome) error {
 	var txCommited bool
 	//TODO: serializable выставить на всю таблицу, а все остальное ReadCommited, на уровне БД
 	serializableIsolation := &sql.TxOptions{
@@ -77,7 +77,7 @@ func (r *Repository) CreateRegionIncomes(ctx context.Context, exRegionIncomes []
 	return nil
 }
 
-func (r *Repository) getRegionsMap(ctx context.Context, tx *sqlx.Tx) (map[string]int32, error) {
+func (r *SQLRepository) getRegionsMap(ctx context.Context, tx *sqlx.Tx) (map[string]int32, error) {
 	query := `SELECT region_id, region_name FROM regions`
 
 	rows, err := tx.QueryxContext(ctx, query)
@@ -106,7 +106,7 @@ func (r *Repository) getRegionsMap(ctx context.Context, tx *sqlx.Tx) (map[string
 	return regionsMap, nil
 }
 
-func (r *Repository) GetRegionIncomes(ctx context.Context, regionId int32, year int32, quarter int32) (*domain.AverageRegionIncomes, error) {
+func (r *SQLRepository) GetRegionIncomes(ctx context.Context, regionId int32, year int32, quarter int32) (*domain.AverageRegionIncomes, error) {
 	var txCommited bool
 
 	readOnlyTx := &sql.TxOptions{
@@ -149,7 +149,7 @@ func (r *Repository) GetRegionIncomes(ctx context.Context, regionId int32, year 
 	return result, nil
 }
 
-func (r *Repository) getIncomesByRegionID(ctx context.Context, tx *sqlx.Tx, regionId int32) (*domain.AverageRegionIncomes, error) {
+func (r *SQLRepository) getIncomesByRegionID(ctx context.Context, tx *sqlx.Tx, regionId int32) (*domain.AverageRegionIncomes, error) {
 	averageRegionIncomes := &domain.AverageRegionIncomes{}
 	query := `SELECT 
 					r.region_name AS Region_Name, 
@@ -177,7 +177,7 @@ func (r *Repository) getIncomesByRegionID(ctx context.Context, tx *sqlx.Tx, regi
 	return averageRegionIncomes, nil
 }
 
-func (r *Repository) getIncomesByRegionIDAndYear(ctx context.Context, tx *sqlx.Tx, regionId int32, year int32) (*domain.AverageRegionIncomes, error) {
+func (r *SQLRepository) getIncomesByRegionIDAndYear(ctx context.Context, tx *sqlx.Tx, regionId int32, year int32) (*domain.AverageRegionIncomes, error) {
 	averageRegionIncomes := &domain.AverageRegionIncomes{}
 	query := `SELECT 
 					r.region_name AS Region_Name,
@@ -212,7 +212,7 @@ func (r *Repository) getIncomesByRegionIDAndYear(ctx context.Context, tx *sqlx.T
 	return averageRegionIncomes, nil
 }
 
-func (r *Repository) getRegionIncomesByAllParameters(ctx context.Context, tx *sqlx.Tx, regionId int32, year int32, quarter int32) (*domain.AverageRegionIncomes, error) {
+func (r *SQLRepository) getRegionIncomesByAllParameters(ctx context.Context, tx *sqlx.Tx, regionId int32, year int32, quarter int32) (*domain.AverageRegionIncomes, error) {
 	averageRegionIncomes := &domain.AverageRegionIncomes{}
 
 	query := `SELECT 
@@ -255,4 +255,49 @@ func (r *Repository) getRegionIncomesByAllParameters(ctx context.Context, tx *sq
 	}
 
 	return averageRegionIncomes, nil
+}
+
+func (r *RedisRepository) GetCachedRegionIncomes(ctx context.Context, regionId int32, year int32, quarter int32) (*domain.AverageRegionIncomes, error) {
+	averageRegionIncomes := &domain.AverageRegionIncomes{}
+
+	redisKey := createCachedKey(regionId, year, quarter)
+
+	var averageRegionIncomesJSON string
+
+	err := r.db.Get(ctx, redisKey).Scan(&averageRegionIncomesJSON)
+	if err != nil {
+		return nil, fmt.Errorf("error getting cached region incomes: %w", err)
+	}
+
+	err = json.Unmarshal([]byte(averageRegionIncomesJSON), averageRegionIncomes)
+	if err != nil {
+		return nil, fmt.Errorf("error unmarshalling cached region incomes: %w", err)
+	}
+
+	return averageRegionIncomes, nil
+}
+
+func (r *RedisRepository) SetCachedRegionIncomes(
+	ctx context.Context,
+	averageRegionIncomes *domain.AverageRegionIncomes,
+	regionId int32,
+	year int32,
+	quarter int32) error {
+
+	redisKey := createCachedKey(regionId, year, quarter)
+
+	averageRegionIncomesJSON, err := json.Marshal(averageRegionIncomes)
+	if err != nil {
+		return fmt.Errorf("error marshalling cached region incomes: %w", err)
+	}
+
+	err = r.db.Set(ctx, redisKey, averageRegionIncomesJSON, r.ttl).Err()
+	if err != nil {
+		return fmt.Errorf("error setting cached region incomes: %w", err)
+	}
+	return nil
+}
+
+func createCachedKey(regionId int32, year int32, quarter int32) string {
+	return fmt.Sprintf("region_incomes_%d_%d_%d", regionId, year, quarter)
 }

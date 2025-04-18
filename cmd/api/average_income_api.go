@@ -12,16 +12,18 @@ package main
 
 import (
 	"context"
+	"log/slog"
+	"net/http"
+	"os"
+	"time"
+
 	"github.com/donskova1ex/AverageRegionIncomes/internal"
 	"github.com/donskova1ex/AverageRegionIncomes/internal/config"
 	"github.com/donskova1ex/AverageRegionIncomes/internal/middleware"
 	"github.com/donskova1ex/AverageRegionIncomes/internal/processors"
 	"github.com/donskova1ex/AverageRegionIncomes/internal/repositories"
 	"github.com/jmoiron/sqlx"
-	"log/slog"
-	"net/http"
-	"os"
-	"time"
+	"github.com/redis/go-redis/v9"
 
 	openapi "github.com/donskova1ex/AverageRegionIncomes/openapi"
 )
@@ -49,6 +51,7 @@ func main() {
 		logger.Error("error connecting to database", slog.String("err", err.Error()))
 		return
 	}
+
 	defer func(db *sqlx.DB) {
 		err := db.Close()
 		if err != nil {
@@ -56,9 +59,23 @@ func main() {
 		}
 	}(db)
 
-	repository := repositories.NewRepository(db, logger)
+	redisDBData, err := repositories.NewRedisDB(ctx)
+	if err != nil {
+		logger.Error("error connecting to redis", slog.String("err", err.Error()))
+		return
+	}
 
-	regionIncomesProcessor := processors.NewAverageIncome(repository, logger)
+	defer func(redisDB *redis.Client) {
+		err := redisDB.Close()
+		if err != nil {
+			logger.Error("error closing redis", slog.String("err", err.Error()))
+		}
+	}(redisDBData.DB)
+
+	DBrepository := repositories.NewSQLRepository(db, logger)
+	redisDBRepository := repositories.NewRedisRepository(redisDBData.DB, redisDBData.TTL, logger)
+
+	regionIncomesProcessor := processors.NewAverageIncome(DBrepository, redisDBRepository, logger)
 	GetRegionIncomesAPIService := openapi.NewGetRegionIncomesAPIService(regionIncomesProcessor, logger)
 	GetRegionIncomesAPIController := openapi.NewGetRegionIncomesAPIController(GetRegionIncomesAPIService)
 
@@ -101,6 +118,7 @@ func main() {
 		logger.Info("HTTP server shut down successfully")
 		return nil
 	})
+
 	shutdownCtx, shutdownCancel := context.WithCancel(ctx)
 	defer shutdownCancel()
 	go func() {
