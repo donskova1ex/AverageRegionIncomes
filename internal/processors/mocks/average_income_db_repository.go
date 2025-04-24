@@ -9,7 +9,6 @@ import (
 	reflect "reflect"
 
 	domain "github.com/donskova1ex/AverageRegionIncomes/internal/domain"
-	gomock "github.com/golang/mock/gomock"
 )
 
 // AverageIncomeDBRepository is a mock of AverageIncomeDBRepository interface.
@@ -36,16 +35,12 @@ func (m *AverageIncomeDBRepository) EXPECT() *AverageIncomeDBRepositoryMockRecor
 }
 
 // GetRegionIncomes mocks base method.
-func (m *AverageIncomeDBRepository) GetRegionIncomes(arg0 context.Context, arg1, arg2, arg3 int32) (*domain.AverageRegionIncomes, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetRegionIncomes", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].(*domain.AverageRegionIncomes)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetRegionIncomes indicates an expected call of GetRegionIncomes.
-func (mr *AverageIncomeDBRepositoryMockRecorder) GetRegionIncomes(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRegionIncomes", reflect.TypeOf((*AverageIncomeDBRepository)(nil).GetRegionIncomes), arg0, arg1, arg2, arg3)
 }

@@ -9,11 +9,12 @@ import (
 	"log/slog"
 )
 
-//go:generate mockgen -destination=./mocks/average_income_repository.go -package=mocks -mock_names=AverageIncomeRepository=AverageIncomeRepository . AverageIncomeRepository
+//go:generate mockgen -destination=./mocks/average_income_db_repository.go -package=mocks -mock_names=AverageIncomeDBRepository=AverageIncomeDBRepository . AverageIncomeDBRepository
 type AverageIncomeDBRepository interface {
 	GetRegionIncomes(ctx context.Context, regionId int32, year int32, quarter int32) (*domain.AverageRegionIncomes, error)
 }
 
+//go:generate mockgen -destination=./mocks/average_income_redis_repository.go -package=mocks -mock_names=AverageIncomeRedisRepository=AverageIncomeRedisRepository . AverageIncomeRedisRepository
 type AverageIncomeRedisRepository interface {
 	GetCachedRegionIncomes(ctx context.Context, regionId int32, year int32, quarter int32) (*domain.AverageRegionIncomes, error)
 	SetCachedRegionIncomes(ctx context.Context, averageRegionIncomes *domain.AverageRegionIncomes, regionId int32, year int32, quarter int32) error

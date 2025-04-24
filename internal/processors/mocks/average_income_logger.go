@@ -7,7 +7,6 @@ package mocks
 import (
 	reflect "reflect"
 
-	gomock "github.com/golang/mock/gomock"
 )
 
 // AverageIncomeLogger is a mock of AverageIncomeLogger interface.
@@ -34,35 +33,25 @@ func (m *AverageIncomeLogger) EXPECT() *AverageIncomeLoggerMockRecorder {
 }
 
 // Error mocks base method.
-func (m *AverageIncomeLogger) Error(arg0 string, arg1 ...interface{}) {
 	m.ctrl.T.Helper()
-	varargs := []interface{}{arg0}
-	for _, a := range arg1 {
 		varargs = append(varargs, a)
 	}
 	m.ctrl.Call(m, "Error", varargs...)
 }
 
 // Error indicates an expected call of Error.
-func (mr *AverageIncomeLoggerMockRecorder) Error(arg0 interface{}, arg1 ...interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	varargs := append([]interface{}{arg0}, arg1...)
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Error", reflect.TypeOf((*AverageIncomeLogger)(nil).Error), varargs...)
 }
 
 // Info mocks base method.
-func (m *AverageIncomeLogger) Info(arg0 string, arg1 ...interface{}) {
 	m.ctrl.T.Helper()
-	varargs := []interface{}{arg0}
-	for _, a := range arg1 {
 		varargs = append(varargs, a)
 	}
 	m.ctrl.Call(m, "Info", varargs...)
 }
 
 // Info indicates an expected call of Info.
-func (mr *AverageIncomeLoggerMockRecorder) Info(arg0 interface{}, arg1 ...interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	varargs := append([]interface{}{arg0}, arg1...)
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Info", reflect.TypeOf((*AverageIncomeLogger)(nil).Info), varargs...)
 }
