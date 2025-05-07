@@ -26,6 +26,17 @@ type RedisDBData struct {
 	TTL time.Duration
 }
 
+// newRedisOptions initializes Redis connection options from environment variables.
+// It loads configuration from .env file and validates required environment variables:
+// - REDIS_HOST: Redis server host
+// - REDIS_PORT: Redis server port
+// - REDIS_USER_PASSWORD: Redis user password
+// - REDIS_USER: Redis username
+// - REDIS_TTL_ACTUAL_DATA: Time-to-live duration for cached data
+//
+// Returns:
+//   - *RedisOptions: Redis connection options and TTL settings
+//   - error: error if environment variables are missing or invalid
 func newRedisOptions() (*RedisOptions, error) {
 	err := godotenv.Load("/app/config/.env.dev")
 	if err != nil {
@@ -71,6 +82,17 @@ func newRedisOptions() (*RedisOptions, error) {
 	return &RedisOptions{options: opts, ttl: actualDataTtl}, nil
 }
 
+// NewRedisDB creates a new Redis database connection with the specified configuration.
+// It initializes the connection using environment variables and performs a connection test.
+// The function returns a RedisDBData structure containing the Redis client and TTL settings,
+// or an error if the connection fails or configuration is invalid.
+//
+// Parameters:
+//   - ctx: context.Context for managing the connection lifecycle
+//
+// Returns:
+//   - *RedisDBData: pointer to the Redis database structure containing the client and TTL
+//   - error: error if connection or configuration fails
 func NewRedisDB(ctx context.Context) (*RedisDBData, error) {
 	opts, err := newRedisOptions()
 	if err != nil {
