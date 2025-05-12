@@ -3,6 +3,7 @@ package repositories
 import (
 	"fmt"
 	"github.com/donskova1ex/AverageRegionIncomes/internal/domain"
+	"github.com/donskova1ex/AverageRegionIncomes/tools"
 	"log/slog"
 	"strconv"
 	"strings"
@@ -45,12 +46,12 @@ func (r *ExcelReader) openFileWithRetry(filePath string) (*excelize.File, error)
 	return nil, err
 }
 
-func (r *ExcelReader) getRowsWithRetry(file *excelize.File, sheet string) ([][]string, error) {
+func (r *ExcelReader) getRowsWithRetry(file *excelize.File) ([][]string, error) {
 	var rows [][]string
 	var err error
 
 	for attempt := 1; attempt <= r.maxRetries; attempt++ {
-		rows, err = file.GetRows(sheet)
+		rows, err = tools.FormattingFileRows(file)
 		if err == nil {
 			return rows, nil
 		}
@@ -115,9 +116,19 @@ func (r *ExcelReader) convertRowToIncomes(dataParts []string, valueParts []strin
 			return nil, fmt.Errorf("missing value for date %s", value)
 		}
 
-		income, err := strconv.ParseFloat(valueParts[index], 32)
+		var strIncome string
+		switch {
+		case strings.Contains(valueParts[index], ","):
+			strIncome = strings.ReplaceAll(valueParts[index], ",", "")
+		case valueParts[index] == "":
+			strIncome = "0"
+		default:
+			strIncome = valueParts[index]
+		}
+
+		income, err := strconv.ParseFloat(strIncome, 64)
 		if err != nil {
-			return nil, fmt.Errorf("failed to parse income: %w", err)
+			return nil, fmt.Errorf("failed to parse income: %w, [%s]", err, region)
 		}
 
 		regionIncomes = append(regionIncomes, &domain.ExcelRegionIncome{
@@ -143,7 +154,7 @@ func (r *ExcelReader) ReadFile(filepath string) ([]*domain.ExcelRegionIncome, er
 		return nil, fmt.Errorf("no sheets found in file")
 	}
 
-	rows, err := r.getRowsWithRetry(file, sheets[0])
+	rows, err := r.getRowsWithRetry(file)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get rows: %w", err)
 	}

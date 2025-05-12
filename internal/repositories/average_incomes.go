@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/lib/pq"
 	"log/slog"
 	"strings"
 
@@ -14,8 +15,66 @@ import (
 )
 
 func (r *SQLRepository) CreateRegionIncomes(ctx context.Context, exRegionIncomes []*domain.ExcelRegionIncome) error {
+	const maxRetries = 5
+	var lastErr error
+
+	for attempt := 0; attempt < maxRetries; attempt++ {
+		err := r.createRegionIncomesWithTx(ctx, exRegionIncomes)
+		if err == nil {
+			r.logger.Info("Re")
+			return nil
+		}
+
+		var pqErr *pq.Error
+		if errors.As(err, &pqErr) && pqErr.Code == "40001" {
+			r.logger.Warn("serialization failure, retrying transaction",
+				slog.Int("attempt", attempt+1),
+				slog.String("err", pqErr.Error()))
+			lastErr = fmt.Errorf("serialization error (retry %d): %w", attempt+1, err)
+			continue
+		}
+
+		r.logger.Error("non-retryable error on attempt",
+			slog.Int("attempt", attempt+1),
+			slog.String("err", err.Error()))
+		return fmt.Errorf("non-retryable error on attempt %d: %w", attempt+1, err)
+	}
+
+	return fmt.Errorf("failed after %d attempts: %w", maxRetries, lastErr)
+}
+
+func (r *SQLRepository) getRegionsMap(ctx context.Context, tx *sqlx.Tx) (map[string]int32, error) {
+	query := `SELECT region_id, region_name FROM regions`
+
+	rows, err := tx.QueryxContext(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("error executing query: %w", err)
+	}
+	defer rows.Close()
+
+	regionsMap := make(map[string]int32)
+
+	for rows.Next() {
+		var regionID int32
+		var regionName string
+
+		if err := rows.Scan(&regionID, &regionName); err != nil {
+			return nil, fmt.Errorf("error scanning row: %w", err)
+		}
+		trimmedRegionName := strings.ReplaceAll(regionName, " ", "")
+		regionsMap[trimmedRegionName] = regionID
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error reading rows: %w", err)
+	}
+
+	return regionsMap, nil
+}
+
+func (r *SQLRepository) createRegionIncomesWithTx(ctx context.Context, exRegionIncomes []*domain.ExcelRegionIncome) error {
 	var txCommited bool
-	//TODO: serializable выставить на всю таблицу, а все остальное ReadCommited, на уровне БД
+
 	serializableIsolation := &sql.TxOptions{
 		Isolation: sql.LevelSerializable,
 		ReadOnly:  false,
@@ -48,11 +107,6 @@ func (r *SQLRepository) CreateRegionIncomes(ctx context.Context, exRegionIncomes
 				Year:     region.Year,
 				Quarter:  region.Quarter,
 			})
-		} else {
-			r.logger.Warn(
-				"region not found in regions map",
-				slog.String("region", fmt.Sprintf("[%s]", region.Region)),
-			)
 		}
 	}
 
@@ -67,8 +121,11 @@ func (r *SQLRepository) CreateRegionIncomes(ctx context.Context, exRegionIncomes
 		return fmt.Errorf("error executing query: %w", err)
 	}
 
-	rowsAffected, _ := result.RowsAffected()
-	r.logger.Info("rows inserted/updated", slog.Int("count", int(rowsAffected)))
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get rows affected: %w", err)
+	}
+	r.logger.Info("rows inserted", slog.Int("count", int(rowsAffected)))
 
 	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("error committing transaction: %w", err)
@@ -76,35 +133,6 @@ func (r *SQLRepository) CreateRegionIncomes(ctx context.Context, exRegionIncomes
 	txCommited = true
 
 	return nil
-}
-
-func (r *SQLRepository) getRegionsMap(ctx context.Context, tx *sqlx.Tx) (map[string]int32, error) {
-	query := `SELECT region_id, region_name FROM regions`
-
-	rows, err := tx.QueryxContext(ctx, query)
-	if err != nil {
-		return nil, fmt.Errorf("error executing query: %w", err)
-	}
-	defer rows.Close()
-
-	regionsMap := make(map[string]int32)
-
-	for rows.Next() {
-		var regionID int32
-		var regionName string
-
-		if err := rows.Scan(&regionID, &regionName); err != nil {
-			return nil, fmt.Errorf("error scanning row: %w", err)
-		}
-		trimmedRegionName := strings.ReplaceAll(regionName, " ", "")
-		regionsMap[trimmedRegionName] = regionID
-	}
-
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("error reading rows: %w", err)
-	}
-
-	return regionsMap, nil
 }
 
 func (r *SQLRepository) GetRegionIncomes(ctx context.Context, regionId int32, year int32, quarter int32) (*domain.AverageRegionIncomes, error) {

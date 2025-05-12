@@ -10,7 +10,7 @@ import (
 )
 
 type ParserConfig struct {
-	FilePath        string
+	DefaultFileName string
 	ParsingInterval time.Duration
 	MaxRetries      int
 	RetryDelay      time.Duration
@@ -18,6 +18,8 @@ type ParserConfig struct {
 	ContainerName   string
 	MainDir         string
 	ContainerDir    string
+	SslCookieURL    string
+	FileStorageURL  string
 }
 
 func DefaultParserConfig(envPath string) (*ParserConfig, error) {
@@ -46,9 +48,9 @@ func DefaultParserConfig(envPath string) (*ParserConfig, error) {
 		return nil, fmt.Errorf("READER_CONTAINER_DIR environment variable not set")
 	}
 
-	defaultFilePath := os.Getenv("DEFAULT_FILE_PATH")
-	if defaultFilePath == "" {
-		return nil, fmt.Errorf("DEFAULT_FILE_PATH environment variable not set")
+	defaultFileName := os.Getenv("DEFAULT_FILE_NAME")
+	if defaultFileName == "" {
+		return nil, fmt.Errorf("DEFAULT_FILE_Name environment variable not set")
 	}
 
 	parsingInterval := os.Getenv("PARSING_INTERVAL")
@@ -61,6 +63,13 @@ func DefaultParserConfig(envPath string) (*ParserConfig, error) {
 		return nil, fmt.Errorf("error parsing PARSING_INTERVAL: %w", err)
 	}
 
+	sslCookieURL := os.Getenv("SSL_COOKIE_URL")
+	if sslCookieURL == "" {
+		return nil, fmt.Errorf("SSL_COOKIE_URL environment variable not set")
+	}
+
+	fileUrlStorage := os.Getenv("FILE_URL_STORAGE")
+
 	maxRetriesStr := os.Getenv("MAX_RETRIES")
 	var maxRetries int
 	if maxRetriesStr == "" {
@@ -72,17 +81,20 @@ func DefaultParserConfig(envPath string) (*ParserConfig, error) {
 	}
 
 	return &ParserConfig{
-		FilePath:        defaultFilePath,
+		DefaultFileName: defaultFileName,
 		ParsingInterval: parsedInterval,
 		MaxRetries:      maxRetries,
 		RetryDelay:      time.Second,
 		PGDSN:           pgDSN,
+		ContainerDir:    readerContainerDir,
+		SslCookieURL:    sslCookieURL,
+		FileStorageURL:  fileUrlStorage,
 	}, nil
 }
 
-func NewParserConfig(filepath string, parsingInterval time.Duration, maxRetries int, retryDelay time.Duration) *ParserConfig {
+func NewParserConfig(fileName string, parsingInterval time.Duration, maxRetries int, retryDelay time.Duration) *ParserConfig {
 	return &ParserConfig{
-		FilePath:        filepath,
+		DefaultFileName: fileName,
 		ParsingInterval: parsingInterval,
 		MaxRetries:      maxRetries,
 		RetryDelay:      retryDelay,

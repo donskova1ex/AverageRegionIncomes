@@ -2,9 +2,17 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
+	"flag"
+	"fmt"
+	"io"
 	"log/slog"
+	"net/http"
+	"net/http/cookiejar"
+	"net/url"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 	"time"
 
@@ -64,7 +72,9 @@ func main() {
 	signalCtx, signalCancel := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
 	defer signalCancel()
 
-	processExcelFile(ctx, repository, logger, cfg)
+	logger.Info("First initialization started")
+	firstInitialization(logger, cfg, ctx, repository)
+	logger.Info("First initialization finished successfully")
 
 	ticker := time.NewTicker(cfg.ParsingInterval)
 	defer ticker.Stop()
@@ -83,8 +93,12 @@ func main() {
 	for {
 		select {
 		case <-ticker.C:
+			logger.Info("Download file started")
+			downloadFile(cfg, logger)
+			logger.Info("Download file finished")
 			logger.Info("Parser started")
 			processExcelFile(ctx, repository, logger, cfg)
+			logger.Info("Parser finished")
 		case <-ctx.Done():
 			logger.Info("shutting down parser")
 			return
@@ -102,18 +116,20 @@ func processExcelFile(
 
 	reader := repositories.NewExcelReader(logger, readerCfg.MaxRetries, readerCfg.RetryDelay)
 
-	incomes, err := reader.ReadFile(readerCfg.FilePath)
+	fPath := filePathConstructor(readerCfg.ContainerDir, readerCfg.DefaultFileName)
+
+	incomes, err := reader.ReadFile(fPath)
 	if err != nil {
 		logger.Error(
 			"failed to read file",
 			slog.String("err", err.Error()),
-			slog.String("filepath", readerCfg.FilePath),
+			slog.String("filepath", fPath),
 		)
 		os.Exit(1)
 	}
 
-	logger.Info("successfully read file",
-		"filepath", readerCfg.FilePath,
+	logger.Info("Successfully read file",
+		"filepath", fPath,
 		"records", len(incomes))
 
 	eReaderProcessor := processors.NewExcelReader(repository, logger)
@@ -121,5 +137,126 @@ func processExcelFile(
 		logger.Error("failed to create region incomes", slog.String("err", err.Error()))
 	}
 
-	logger.Info("successfully saved records to database", "strings read", len(incomes))
+	logger.Info("Successfully saved records to database", "strings read", len(incomes))
+}
+
+func filePathConstructor(filePath, fileName string) string {
+	fileExtension := filepath.Ext(fileName)
+	name := fileName[0 : len(fileName)-len(fileExtension)]
+	datedFileName := fmt.Sprintf("%s%s_%s%s",
+		filePath,
+		name,
+		time.Now().Format("2006-01-02"), fileExtension)
+
+	return datedFileName
+}
+
+func downloadFile(cfg *config.ParserConfig, logger *slog.Logger) {
+	flag.Parse()
+
+	jar, err := cookiejar.New(nil)
+	if err != nil {
+		logger.Error(
+			"failed to create cookie jar",
+			slog.String("err", err.Error()),
+		)
+	}
+	logger.Info("Successfully created cookie jar")
+
+	transport := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
+
+	client := &http.Client{
+		Jar:       jar,
+		Transport: transport,
+	}
+
+	sslURL, err := url.Parse(cfg.SslCookieURL)
+	if err != nil {
+		logger.Error(
+			"failed to parse ssl cookie url",
+			slog.String("err", err.Error()),
+		)
+
+	}
+	logger.Info("Successfully parsed ssl cookie url")
+
+	resp, err := client.Get(sslURL.String())
+	if err != nil {
+		logger.Error(
+			"error establishing session",
+			slog.String("err", err.Error()),
+		)
+	}
+	logger.Info("Successfully established session")
+
+	if err := resp.Body.Close(); err != nil {
+		logger.Error(
+			"failed to close getting cookie response body",
+			slog.String("err", err.Error()),
+		)
+	}
+	logger.Info("Successfully closed response body")
+
+	cookies := jar.Cookies(sslURL)
+	logger.Info(fmt.Sprintf("Recived [%d] cookies from [%s]", len(cookies), sslURL.String()))
+
+	fileURL := fmt.Sprintf("%s%s", cfg.FileStorageURL, cfg.DefaultFileName)
+	resp, err = client.Get(fileURL)
+	if err != nil {
+		logger.Error("failed to download file", slog.String("err", err.Error()))
+	}
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			logger.Error(
+				"failed to close download response body",
+				slog.String("err", err.Error()),
+			)
+		}
+	}(resp.Body)
+
+	fileExt := filepath.Ext(cfg.DefaultFileName)
+	fileName := (cfg.DefaultFileName)[:len(cfg.DefaultFileName)-len(fileExt)]
+	datedFileName := fmt.Sprintf(
+		"%s%s_%s%s",
+		cfg.ContainerDir,
+		fileName,
+		time.Now().Format("2006-01-02"),
+		fileExt,
+	)
+
+	file, err := os.Create(datedFileName)
+	if err != nil {
+		logger.Error("failed to create file", slog.String("err", err.Error()))
+	}
+	defer func(file *os.File) {
+		err := file.Close()
+		if err != nil {
+			logger.Error(
+				"failed to close file",
+				slog.String("err", err.Error()),
+			)
+		}
+	}(file)
+	logger.Info("Successfully created file")
+
+	_, err = io.Copy(file, resp.Body)
+	if err != nil {
+		logger.Error(
+			"failed writing file",
+			slog.String("err", err.Error()),
+		)
+	}
+	logger.Info("Successfully wrote file")
+}
+
+func firstInitialization(logger *slog.Logger, cfg *config.ParserConfig, ctx context.Context, repository *repositories.SQLRepository) {
+	logger.Info("Starting download file")
+	downloadFile(cfg, logger)
+	logger.Info("Downloading complete")
+	logger.Info("File parsing started")
+	processExcelFile(ctx, repository, logger, cfg)
+	logger.Info("File parsing finished")
 }

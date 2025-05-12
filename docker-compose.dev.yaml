@@ -76,7 +76,8 @@ services:
         echo "user $${REDIS_USER} on >$${REDIS_USER_PASSWORD} ~* +@all" >> /usr/local/etc/redis/users.acl &&
         redis-server /usr/local/etc/redis/redis.conf --aclfile /usr/local/etc/redis/users.acl
     depends_on:
-      - api-up
+      postgres:
+        condition: service_healthy
   reader-up:
     env_file:
       - config/.env.dev
@@ -112,5 +113,6 @@ services:
     working_dir: /app
     depends_on:
       - reader-up
+      - redis
 
 
