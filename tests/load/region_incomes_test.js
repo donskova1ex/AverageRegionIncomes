@@ -7,10 +7,10 @@ const errorRate = new Rate('errors');
 
 export const options = {
     stages: [
-        { duration: '1m', target: 10 },    
-        { duration: '1m', target: 50 },    
-        { duration: '1m', target: 100 },   
-        { duration: '1m', target: 0 },    
+        { duration: '15s', target: 100 },    
+        { duration: '15s', target: 500 },    
+        { duration: '15s', target: 1000 },   
+        { duration: '15s', target: 0 },    
     ],
     
     thresholds: {
@@ -22,21 +22,18 @@ export const options = {
 
 function getRandomParams() {
     return {
-        regionid: Math.floor(Math.random() * 85) + 1,
-        year: Math.floor(Math.random() * 3) + 2022,
-        quarter: Math.floor(Math.random() * 4) + 1,
+        regionid: Math.floor(Math.random() * 79) + 1,
     };
 }
 
 export default function() {
     const params = getRandomParams();
     
-    const res = http.get('http://localhost:8080/api/v1/regionincomes', {
-        params: params,
+    const url = `http://localhost:8080/api/v1/regionincomes?regionid=${params.regionid}`;
+    
+    const res = http.get(url, {
         tags: {
             region: params.regionid,
-            year: params.year,
-            quarter: params.quarter,
         },
     });
 
