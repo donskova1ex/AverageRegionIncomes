@@ -38,7 +38,7 @@ func main() {
 
 	cfg, err := config.DefaultParserConfig("/app/config/.env.dev")
 	if err != nil {
-		logger.Error("failed to load configuration", slog.String("err", err.Error()))
+		logger.Error("failed to load config", slog.String("err", err.Error()))
 		os.Exit(1)
 	}
 	logger.Info("Configuration loaded")
