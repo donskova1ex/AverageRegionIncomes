@@ -141,13 +141,13 @@ API документация доступна в формате OpenAPI в ди�
 ### Сборка
 ```bash
 # Сборка всех компонентов
-make build
+make dev-build
 
 # Сборка API сервера
-make build-api
+make dev-build-api
 
 # Сборка Reader сервиса
-make build-reader
+make dev-build-reader
 ```
 
 ### Тестирование
