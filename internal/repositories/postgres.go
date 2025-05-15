@@ -8,6 +8,7 @@ import (
 	_ "github.com/lib/pq"
 )
 
+// Configuration struct
 type Config struct {
 	Host     string
 	Port     string
