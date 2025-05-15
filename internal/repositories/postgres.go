@@ -8,6 +8,7 @@ import (
 	_ "github.com/lib/pq"
 )
 
+// Postgres connection configuration struct
 type Config struct {
 	Host     string
 	Port     string
