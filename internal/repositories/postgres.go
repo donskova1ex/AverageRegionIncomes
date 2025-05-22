@@ -8,6 +8,7 @@ import (
 	_ "github.com/lib/pq"
 )
 
+// PSQL configuration
 type Config struct {
 	Host     string
 	Port     string
