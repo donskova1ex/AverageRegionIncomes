@@ -180,20 +180,55 @@ func (r *SQLRepository) GetRegionIncomes(ctx context.Context, regionId int32, ye
 
 func (r *SQLRepository) getIncomesByRegionID(ctx context.Context, tx *sqlx.Tx, regionId int32) (*domain.AverageRegionIncomes, error) {
 	averageRegionIncomes := &domain.AverageRegionIncomes{}
-	query := `SELECT 
-					r.region_name AS Region_Name, 
-					ri.region_id AS Region_Id, 
-					EXTRACT(YEAR FROM CURRENT_DATE) AS Year,
-					FLOOR((EXTRACT(MONTH FROM CURRENT_DATE) - 1) / 3) + 1 AS Quarter, 
-					AVG(ri.value) AS Average_Region_Incomes 
-				FROM (
-				    SELECT region_id, value 
-						FROM region_incomes 
-						WHERE region_id = $1 
-						ORDER BY year DESC, quarter DESC 
-						LIMIT 4) AS ri 
-				JOIN regions r ON ri.region_id = r.region_id 
-				GROUP BY r.region_name, ri.region_id`
+	/*query := `SELECT
+		r.region_name AS Region_Name,
+		ri.region_id AS Region_Id,
+		EXTRACT(YEAR FROM CURRENT_DATE) AS Year,
+		FLOOR((EXTRACT(MONTH FROM CURRENT_DATE) - 1) / 3) + 1 AS Quarter,
+		AVG(ri.value) AS Average_Region_Incomes
+	FROM (
+	    SELECT region_id, value
+			FROM region_incomes
+			WHERE region_id = $1
+			ORDER BY year DESC, quarter DESC
+			LIMIT 4) AS ri
+	JOIN regions r ON ri.region_id = r.region_id
+	GROUP BY r.region_name, ri.region_id`*/
+
+	query := `SELECT
+					R.REGION_NAME AS REGION_NAME,
+					RI.REGION_ID AS REGION_ID,
+					EXTRACT(YEAR FROM CURRENT_DATE) AS YEAR,
+					FLOOR((EXTRACT(MONTH FROM CURRENT_DATE) - 1) / 3) + 1 AS QUARTER,
+					AVG(RI.VALUE) AS AVERAGE_REGION_INCOMES
+				FROM
+					(
+					SELECT REGION_ID, VALUE
+					FROM
+						(SELECT DISTINCT ON (QUARTER, YEAR)
+							REGION_ID,
+							VALUE,
+							LOADED_AT,
+							QUARTER,
+							YEAR
+						FROM
+							REGION_INCOMES
+						WHERE
+							REGION_ID = $1
+						ORDER BY
+							QUARTER DESC,
+							YEAR DESC,
+							LOADED_AT DESC
+				) AS LATEST_QUARTERS
+					ORDER BY
+						YEAR DESC,
+						QUARTER DESC
+					LIMIT 4) AS RI
+				JOIN REGIONS R ON
+					RI.REGION_ID = R.REGION_ID
+				GROUP BY
+					R.REGION_NAME,
+					RI.REGION_ID`
 
 	err := tx.GetContext(ctx, averageRegionIncomes, query, regionId)
 	if errors.Is(err, sql.ErrNoRows) {
