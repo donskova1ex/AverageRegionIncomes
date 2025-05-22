@@ -293,26 +293,29 @@ func (r *SQLRepository) getRegionIncomesByAllParameters(ctx context.Context, tx 
 					$2 AS year,
 					AVG(incomes.value) AS average_region_incomes
 				FROM (
-					SELECT 
-						ri.region_id, 
-						ri.year, 
-						ri.quarter, 
-						ri.value
-					FROM 
-						region_incomes ri
-					WHERE 
-						ri.region_id = $1 
-						AND ri.year <= $2 
-						AND NOT (ri.year = $2 AND ri.quarter >= $3) 
-					ORDER BY 
-						ri.year DESC, 
-						ri.quarter DESC 
+					SELECT *
+					FROM (
+						SELECT DISTINCT ON (ri.year, ri.quarter)
+							ri.region_id, 
+							ri.year, 
+							ri.quarter, 
+							ri.value,
+							ri.loaded_at
+						FROM 
+							region_incomes ri
+						WHERE 
+							ri.region_id = $1 
+							AND ri.year <= $2 
+							AND NOT (ri.year = $2 AND ri.quarter >= $3)
+						ORDER BY 
+							ri.year DESC, 
+							ri.quarter DESC,
+							ri.loaded_at DESC
+					) AS latest_quarters
+					ORDER BY year DESC, quarter DESC
 					LIMIT 4
 				) AS incomes
-				JOIN 
-					regions r 
-				ON 
-					incomes.region_id = r.region_id
+				JOIN regions r ON incomes.region_id = r.region_id
 				GROUP BY 
 					incomes.region_id, 
 					r.region_name`
