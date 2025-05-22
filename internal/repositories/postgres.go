@@ -17,6 +17,7 @@ type Config struct {
 	SSLMode  string
 }
 
+// NewPostgresDB create new PDB connection
 func NewPostgresDB(ctx context.Context, pgDSN string) (*sqlx.DB, error) {
 	db, err := sqlx.ConnectContext(ctx, "postgres", pgDSN)
 
