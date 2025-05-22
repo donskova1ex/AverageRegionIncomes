@@ -246,8 +246,8 @@ func (r *SQLRepository) getIncomesByRegionIDAndYear(ctx context.Context, tx *sql
 	query := `SELECT 
 					r.region_name AS Region_Name,
 					ri.region_id AS Region_Id,
-					EXTRACT(YEAR FROM CURRENT_DATE) AS Year,
-					FLOOR((EXTRACT(MONTH FROM CURRENT_DATE) - 1) / 3) + 1 AS Quarter,
+					$2 AS Year,
+					0 AS Quarter,
 					AVG(ri.value) AS Average_Region_Incomes
 				FROM (
 					SELECT region_id, year, quarter, value
