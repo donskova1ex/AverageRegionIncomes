@@ -207,7 +207,7 @@ func downloadFile(cfg *config.ParserConfig, logger *slog.Logger) {
 		)
 	}
 	logger.Info("Successfully closed response body")
-	//get cookies
+
 	cookies := jar.Cookies(sslURL)
 	logger.Info(fmt.Sprintf("Recived [%d] cookies from [%s]", len(cookies), sslURL.String()))
 
