@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -181,6 +182,14 @@ func downloadFile(cfg *config.ParserConfig, logger *slog.Logger) {
 
 	}
 	logger.Info("Successfully parsed ssl cookie url")
+
+	if sslURL == nil {
+		nilSSLError := errors.New("nil ssl cookie url")
+		logger.Error(
+			"ssl cookie url is empty",
+			slog.String("err", nilSSLError.Error()),
+		)
+	}
 
 	resp, err := client.Get(sslURL.String())
 	if err != nil {
