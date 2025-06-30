@@ -85,7 +85,7 @@ func FormattingFileRows(file *excelize.File) ([][]string, error) {
 				}
 			}
 
-			newRows = append(newRows, newHeaderValues)
+			newRows = append(newRows, newHeaderValues[0:len(rows[2 : len(rows)-4][0])])
 			newRows = append(newRows, rows[2:len(rows)-4]...)
 
 		}
